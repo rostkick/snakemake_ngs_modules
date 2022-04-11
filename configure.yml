@@ -1,4 +1,7 @@
-snakemake_modules: "/mnt/tank/scratch/rskitchenko/projects/snakemake_common_modules/modules/"
+snakemake_modules: "/mnt/tank/scratch/rskitchenko/projects/snakemake_ngs_modules/modules/"
+
+chain: "/mnt/tank/scratch/rskitchenko/projects/medulo/hg38ToHg19.over.chain_mod.gz"
+reference_37: "/mnt/archive/shared/references/GRCh37/GATK_b37/human_g1k_v37.fasta"
 
 GRCh38:
   GATK_b38:
@@ -21,11 +24,16 @@ tools:
   vep:
     vep: "/mnt/tank/scratch/rskitchenko/ensembl-vep_latest.sif"
     cache: "/mnt/tank/scratch/rskitchenko/.vep"
-    plugins: "/mnt/tank/scratch/rskitchenko/.vep/Plugins"
+    plugins: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins"
     plugins_data:
-      MPC: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_constraint_official_mpc_values_v2.grch38.txt.gz"
+      MPC: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_constraint_official_mpc_values_v2.txt.gz"
+      ExACpLI: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt"
+      gnomAD_pLI: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins/gnomad.v2.1.1.lof_metrics.by_gene.gene_pli.txt"
+      #gnomAD_pLI: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/gnomad.v2.1.1.lof_metrics.by_gene.txt"
+      
 
 panel_capture:
   target: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.bed"
   intervals: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.intervals"
   interval_list: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.interval_list"
+
