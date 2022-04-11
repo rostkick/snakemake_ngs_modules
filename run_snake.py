@@ -5,7 +5,8 @@ import subprocess as sp
 from tempfile import NamedTemporaryFile
 import re
 
-from modules.scripts.functions import *
+from modules.scripts.functions import get_min_substr
+from modules.scripts.command_builder import SlurmDecorator, UserInput, CommandBuilder
 
 
 def run_snake(args):
@@ -39,69 +40,74 @@ def run_snake(args):
 
 		df['patient'] = patient
 		df.loc[:, 'patient'] = df.loc[:, 'patient'].astype(str).str.replace('\.', '_')
-	
-	# print(df.sample(n=5).loc[:, df.columns.map(lambda x: x.contains("samples"))])
+
 	print(df.sample(n=5).loc[:, df.columns.str.contains('samples')])
 	print('\n')
 
 	df.to_csv(args.output_params, sep='\t', index=False)
 	wd_path = os.path.dirname(os.path.realpath(__file__))
 
-	slash = '\\'
-	nl = '\n'
-	snake_command = \
-				(f"snakemake {slash}{nl}"
-				f"	--nolock {slash}{nl}"
-				f"	-s {wd_path}/snakefile.smk {slash}{nl}"
-				f"	--configfile {wd_path}/configure.yml {slash}{nl}"
-				f"	--jobs {args.jobs} {slash}{nl}"
-				f"	--cores {args.cores} {slash}{nl}"
-				f"	--config run_id='{args.run_id}' {slash}{nl}"
-				f"			mode='{args.mode}' {slash}{nl}"
-				f"			params_table='{args.output_params}' {slash}{nl}"
-				f"{'	-p ' + slash + nl if args.printshellcmds else ''}"
-				f"{'	-F ' + slash + nl if args.force else ''}"
-				f"{'	-q ' + slash + nl if args.quite else ''}"
-				f"{'	-n ' + slash + nl if args.dryrun else ''}"
-				f"{'	--use-conda ' + slash + nl if args.use_conda else ''}"
-				f"{'	--ri ' + slash + nl if args.rerun_incomplete else ''}"
-				f"{'	--dag' + slash + nl if args.dag else ''}"
-				f"{'	--rulegraph' + slash + nl if args.rulegraph else ''}"
-				f"{'	-R ' + args.forcerun + slash + nl if args.forcerun is not None else ''}"
-				f"{'	-U ' + args.until + slash + nl if args.until is not None else ''}").rstrip('\\\n')
+
+	smk_command_builder = CommandBuilder(UserInput('snakemake', True))
+
+	smk_command_elements = []
+
+	smk_command_elements.append(UserInput('-s', f"{wd_path}/snakefile.smk"))
+	smk_command_elements.append(UserInput('--nolock', True))
+	smk_command_elements.append(UserInput('--configfile', f"{wd_path}/configure.yml"))
+	smk_command_elements.append(UserInput('--jobs', args.jobs))
+	smk_command_elements.append(UserInput('--cores', args.cores))
+	smk_command_elements.append(UserInput('--config', {
+													'run_id': args.run_id, 
+													'mode': args.mode, 
+													'params_table': args.output_params
+													}))
+	smk_command_elements.append(UserInput('-p', args.printshellcmds))
+	smk_command_elements.append(UserInput('-F', args.force))
+	smk_command_elements.append(UserInput('-q', args.quite))
+	smk_command_elements.append(UserInput('-n', args.dryrun))
+	smk_command_elements.append(UserInput('--use-conda', args.use_conda))
+	smk_command_elements.append(UserInput('--ri', args.rerun_incomplete))
+	smk_command_elements.append(UserInput('--dag', args.dag))
+	smk_command_elements.append(UserInput('--rulegraph', args.rulegraph))
+	smk_command_elements.append(UserInput('-R', args.forcerun))
+	smk_command_elements.append(UserInput('-U', args.until))
+
+	for element_x in smk_command_elements:
+		smk_command_builder.add_cmd_element(element_x)
+
+	snake_command = str(smk_command_builder)
+
 	if args.cluster & ~(args.dag | args.rulegraph | args.dryrun):
-		sbatch_body_begin = \
-					(f"sbatch << ENDINPUT{nl}"
-					f"#!/bin/sh{nl}"
-					f"{nl}"
-					f"#SBATCH --job-name={args.run_id}{nl}"
-					f"#SBATCH --cpus-per-task={args.jobs}{nl}"
-					f"{'#SBATCH --mem=' + args.max_mem + nl if args.max_mem else ''}"
-					f"{'#SBATCH --qos=' + args.qos + nl if args.qos else ''}"
-					f"{'#SBATCH --time=' + args.time + nl if args.time else ''}"
-					f"{'#SBATCH --output=' + args.log + nl if args.log else ''}"
-					f"#SBATCH--priority=1{nl}"
-					f"{nl}")
-		sbatch_body_end = \
-					(f"{nl}"
-					f"{nl}"
-					f"ENDINPUT"
-					f"{nl}")
-		
-		sbatch_task = sbatch_body_begin + snake_command + sbatch_body_end
-		
+
+		slurm_command_builder = CommandBuilder(UserInput('sbatch << ENDINPUT', True))
+
+		slurm_command_elements = []
+
+		slurm_command_elements.append(UserInput('#!/bin/sh', True))
+		slurm_command_elements.append(UserInput("#SBATCH --job-name", args.run_id))
+		slurm_command_elements.append(UserInput("#SBATCH --cpus-per-task", args.jobs))
+		slurm_command_elements.append(UserInput("#SBATCH --mem", args.max_mem))
+		slurm_command_elements.append(UserInput("#SBATCH --qos", args.qos))
+		slurm_command_elements.append(UserInput("#SBATCH --time", args.time))
+		slurm_command_elements.append(UserInput("#SBATCH --output", args.log))
+		slurm_command_elements.append(UserInput("#SBATCH --priority", "1"))
+
+		for element_x in slurm_command_elements:
+			slurm_command_builder.add_cmd_element(element_x)
+
+		slurm_command_builder.set_indent_size(0)
+
+		sbatch_task = SlurmDecorator(smk_command_builder, slurm_command_builder)
+
 		tmp = NamedTemporaryFile()
 		with open(tmp.name, 'w') as w:
-			w.write(sbatch_task)
+			w.write(str(sbatch_task))
 		print(sbatch_task)
 		sp.run(f"bash {tmp.name}", shell=True)
 	else:
 		print(snake_command)
 		sp.run(snake_command, shell=True)
-
-	
-
-	
 
 
 if __name__ == '__main__':
