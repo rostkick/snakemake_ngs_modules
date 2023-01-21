@@ -32,8 +32,8 @@ def get_somatic_input(wc, data):
 
 def get_inputs(run, mode, patients=None):
 	if ('somatic' in mode) | (mode == 'all'):
-		final_output_soma = [f'results/{run}/somatic/{patient}/plots/plot.pdf' for patient in patients] + \
-							[f'results/{run}/somatic/{patient}/annotation/somatic.annotated.vcf.gz' for patient in patients]
+		final_output_soma = [f'results/{run}/somatic/{patient}/annotation/somatic.annotated.vcf.gz' for patient in patients]
+							#[f'results/{run}/somatic/{patient}/plots/plot.pdf' for patient in patients]
 	final_output_germ = [f'results/{run}/germline/vcf/germline.annotated.vcf.gz']
 	final_output_sv = [f'results/{run}/germline/sv/sv.annotated.vcf.gz']
 

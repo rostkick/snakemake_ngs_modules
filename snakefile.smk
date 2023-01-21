@@ -38,6 +38,7 @@ else:
 						'germline_reverse': 'fastq_reverse'}, inplace=True)
 	long_data = data.copy()
 
+print(SAMPLES)
 wildcard_constraints:
 	patient="|".join(PATIENTS),
 	sample="|".join(SAMPLES)
@@ -47,7 +48,8 @@ rule all:
 
 include: config["snakemake_modules"] + "aligning.smk"
 include: config["snakemake_modules"] + "preprocessing.smk"
-include: config["snakemake_modules"] + "germline_calling.gatk.smk"
+# include: config["snakemake_modules"] + "germline_calling.gatk.smk"
+include: config["snakemake_modules"] + "germline_calling.deepvariant.smk"
 include: config["snakemake_modules"] + "somatic_calling.smk"
 include: config["snakemake_modules"] + "sv_calling.smk"
 include: config["snakemake_modules"] + "liftover.smk"

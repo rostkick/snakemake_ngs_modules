@@ -1,3 +1,6 @@
+from ast import Str
+
+
 class UserInput:
     __match_args__ = ('argument_name', 'argument_value')
 
@@ -23,6 +26,14 @@ class CommandElement:
 	@indent_size.setter
 	def indent_size(self, indent_size) -> None:
 		self.__indent_size = indent_size
+
+	@property
+	def str_end(self):
+		return self.__l_end
+
+	@str_end.setter
+	def str_end(self, str_end) -> None:
+		self.__l_end = str_end
 
 	def __str(self, indent):
 		lines = []
@@ -52,9 +63,10 @@ class CommandElement:
 
 
 class CommandBuilder:
-	def __init__(self, root_name) -> None:
+	def __init__(self, root_name: str) -> None:
 		self.root_name = root_name
 		self.__root = CommandElement(root_name)
+		
 
 	def add_cmd_element(self, user_input):
 		self.__root.elements.append(
@@ -64,6 +76,16 @@ class CommandBuilder:
 	def set_indent_size(self, indent_size) -> None:
 		for e in self.__root.elements:
 			e.indent_size = indent_size
+
+	def set_str_end(self, str_end) -> None:
+		for e in self.__root.elements:
+			e.str_end = str_end
+
+	def set_indent_size_root(self, indent_size) -> None:
+		self.__root.indent_size = indent_size
+
+	def set_str_end_root(self, str_end) -> None:
+		self.__root.str_end = str_end
 
 	def __str__(self) -> str:
 		return str(self.__root)

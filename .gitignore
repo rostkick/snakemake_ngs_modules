@@ -1,1 +1,2 @@
-modules/scripts/__pycache__/functions.cpython-38.pyc
+*.pyc
+*.json

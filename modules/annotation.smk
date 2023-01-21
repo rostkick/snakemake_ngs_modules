@@ -1,12 +1,12 @@
 rule vep_somatic:
-	input: 'results/{run}/somatic/{patient}/mutect2.liftovered_37.vcf.gz'
+	input: 'results/{run}/somatic/{patient}/mutect2.filtered.pass.vcf.gz'
 	output: 'results/{run}/somatic/{patient}/annotation/somatic.annotated.vcf.gz'
 	params: 
 		vep=config['tools']['vep']['vep'],
-		reference_fasta=config['reference_37'],
+		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta'],
 		cache=config['tools']['vep']['cache'],
 		plugins=config['tools']['vep']['plugins'],
-		mpc_data=config['tools']['vep']['plugins_data']['MPC']
+		# mpc_data=config['tools']['vep']['plugins_data']['MPC']
 	log: 'results/{run}/logs/somatic/{patient}/annotation.log'
 	threads: workflow.cores
 	shell: """singularity run -B /mnt:/mnt {params.vep} \
@@ -17,14 +17,12 @@ rule vep_somatic:
 				--vcf \
 				--force_overwrite \
 				--force \
-				--assembly GRCh37 \
 				--af \
 				--af_gnomad \
 				--max_af \
 				--hgvs \
 				--no_escape \
 				--canonical \
-				--plugin MPC,{params.mpc_data} \
 				--compress_output bgzip \
 				--use_given_ref \
 				--fasta {params.reference_fasta} \
@@ -37,11 +35,11 @@ rule vep_somatic:
 
 
 rule vep_germline:
-	input: "results/{run}/germline/vcf/cohort.filtered.liftovered_37.vcf.gz"
+	input: 'results/{run}/germline/vcf/cohort.filtered.vcf.gz'
 	output: 'results/{run}/germline/vcf/germline.annotated.vcf.gz'
 	params: 
 		vep=config['tools']['vep']['vep'],
-		reference_fasta=config['reference_37'],
+		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta'],
 		cache=config['tools']['vep']['cache'],
 		plugins=config['tools']['vep']['plugins'],
 		mpc_data=config['tools']['vep']['plugins_data']['MPC'],
@@ -57,7 +55,7 @@ rule vep_germline:
 				--vcf \
 				--force_overwrite \
 				--force \
-				--assembly GRCh37 \
+				--assembly GRCh38 \
 				--af \
 				--af_gnomad \
 				--max_af \

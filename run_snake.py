@@ -12,13 +12,14 @@ from modules.scripts.command_builder import SlurmDecorator, UserInput, CommandBu
 def run_snake(args):
 
 	germ = sorted(args.fastq_germline, key = lambda x: int(re.search(args.sample_pattern, x).group(1)))
-	germline_forward = [i for i in germ if re.match('.*_R1_.*', i) is not None]
-	germline_reverse = [i for i in germ if re.match('.*_R2_.*', i) is not None]
+	germline_forward = [i for i in germ if re.match('.*_[\w]1_.*', i) is not None]
+	germline_reverse = [i for i in germ if re.match('.*_[\w]2_.*', i) is not None]
 
 	df = pd.DataFrame({'germline_forward': germline_forward,
 					'germline_reverse': germline_reverse})
 
 	df.loc[:, 'germline_samples'] = df.loc[:, 'germline_forward'].apply(lambda x: os.path.basename(x)).str.extract('(?P<germline_samples>.+)_R1.*')
+	print(df.loc[:, 'germline_samples'])
 	df.loc[:, 'germline_samples'] = get_min_substr(df.loc[:, 'germline_samples'])
 
 	if ('somatic' in args.mode) | (args.mode == 'all'):
@@ -40,21 +41,27 @@ def run_snake(args):
 
 		df['patient'] = patient
 		df.loc[:, 'patient'] = df.loc[:, 'patient'].astype(str).str.replace('\.', '_')
-
-	print(df.sample(n=5).loc[:, df.columns.str.contains('samples')])
+	print(df)
+	# print(df.sample(n=3).loc[:, df.columns.str.contains('samples')])
 	print('\n')
 
 	df.to_csv(args.output_params, sep='\t', index=False)
+
 	wd_path = os.path.dirname(os.path.realpath(__file__))
+	smk_path = os.path.join(wd_path, 'snakefile.smk')
 
+	if args.configfile:
+		config_path = args.configfile
+	else:
+		config_path = os.path.join(wd_path, 'configure.yml')
 
+	
 	smk_command_builder = CommandBuilder(UserInput('snakemake', True))
 
 	smk_command_elements = []
-
-	smk_command_elements.append(UserInput('-s', f"{wd_path}/snakefile.smk"))
+	smk_command_elements.append(UserInput('-s', smk_path))
 	smk_command_elements.append(UserInput('--nolock', True))
-	smk_command_elements.append(UserInput('--configfile', f"{wd_path}/configure.yml"))
+	smk_command_elements.append(UserInput('--configfile', config_path))
 	smk_command_elements.append(UserInput('--jobs', args.jobs))
 	smk_command_elements.append(UserInput('--cores', args.cores))
 	smk_command_elements.append(UserInput('--config', {
@@ -80,10 +87,11 @@ def run_snake(args):
 
 	if args.cluster & ~(args.dag | args.rulegraph | args.dryrun):
 
-		slurm_command_builder = CommandBuilder(UserInput('sbatch << ENDINPUT', True))
+		slurm_command_builder = CommandBuilder(UserInput('#!/bin/sh', True))
+		slurm_command_builder.set_str_end_root('')
 
 		slurm_command_elements = []
-
+		slurm_command_elements.append(UserInput('sbatch << ENDINPUT', True))
 		slurm_command_elements.append(UserInput('#!/bin/sh', True))
 		slurm_command_elements.append(UserInput("#SBATCH --job-name", args.run_id))
 		slurm_command_elements.append(UserInput("#SBATCH --cpus-per-task", args.jobs))
@@ -96,6 +104,7 @@ def run_snake(args):
 		for element_x in slurm_command_elements:
 			slurm_command_builder.add_cmd_element(element_x)
 
+		slurm_command_builder.set_str_end('')
 		slurm_command_builder.set_indent_size(0)
 
 		sbatch_task = SlurmDecorator(smk_command_builder, slurm_command_builder)
@@ -112,7 +121,8 @@ def run_snake(args):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Process some integers.')
-
+	parser.add_argument('--configfile', '-cf', type=str,
+						help='')
 	parser.add_argument('--mode', '-m', type=str, required=True,
 						help='')
 	parser.add_argument('--run_id', '-ri', type=str, required=True,
@@ -127,9 +137,9 @@ if __name__ == '__main__':
 						help='')
 	parser.add_argument('--sample_pattern', '-sp', type=str, required=True,
 						help='')
-	parser.add_argument('--jobs', '-j', type=int, required=True,
+	parser.add_argument('--jobs', '-j', required=True,
 						help='')
-	parser.add_argument('--cores', '-c', type=int, required=True,
+	parser.add_argument('--cores', '-c', required=True,
 						help='')
 	parser.add_argument('--force', '-F', action='store_true',
 						help='')

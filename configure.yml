@@ -1,7 +1,7 @@
 snakemake_modules: "/mnt/tank/scratch/rskitchenko/projects/snakemake_ngs_modules/modules/"
 
 chain: "/mnt/tank/scratch/rskitchenko/projects/medulo/hg38ToHg19.over.chain_mod.gz"
-reference_37: "/mnt/archive/shared/references/GRCh37/GATK_b37/human_g1k_v37.fasta"
+reference_37: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
 
 GRCh38:
   GATK_b38:
@@ -15,6 +15,7 @@ GRCh38:
 
 tools:
   samtools: "/usr/bin/samtools"
+  bwa_mem2: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/bwa-mem2"
   picard_old: "/nfs/home/rskitchenko/picard-tools-2.0.1/picard.jar"
   manta:
     configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
