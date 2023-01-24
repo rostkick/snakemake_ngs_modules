@@ -2,8 +2,8 @@ rule liftover_germline:
 	input: "results/{run}/germline/vcf/cohort.filtered.vcf.gz"
 	output: "results/{run}/germline/vcf/cohort.filtered.liftovered_37.unsorted.vcf.gz"
 	params: 
-		chain=config['chain'],
-		reference=config['reference_37']
+		chain=config['liftover']['chain'],
+		reference=config['liftover']['reference_fasta']
 	shell: """
 			CrossMap.py vcf \
 			{params.chain} {input} \
@@ -27,8 +27,8 @@ rule liftover_somatic:
 	input: 'results/{run}/somatic/{patient}/mutect2.filtered.pass.vcf.gz'
 	output: 'results/{run}/somatic/{patient}/mutect2.liftovered_37.unsorted.vcf.gz'
 	params: 
-		chain=config['chain'],
-		reference=config['reference_37']
+		chain=config['liftover']['chain'],
+		reference=config['liftover']['reference_fasta']
 	shell: """
 			CrossMap.py vcf \
 			{params.chain} {input} \

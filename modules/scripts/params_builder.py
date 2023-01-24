@@ -8,6 +8,10 @@ import numpy as np
 from snakemake.workflow import config
 
 
+RUN = config['run']
+GERMLINE = True if config['grm_dir'] is not None else False
+SOMATIC = True if config['tmr_dir'] is not None else False
+PAIR = True if config['reads_type'] == 'pair' else False
 
 class FastqDirPath:
 
@@ -19,10 +23,9 @@ class FastqList(FastqDirPath):
 
 	def __init__(self, fastq_dir_path: str) -> None:
 		super().__init__(fastq_dir_path)
-		self.fastqs = glob(self.fastq_dir_path+'/*')
-		self.fastq_f = [fq for fq in self.fastqs if re.match('.*_R1_.*', fq) is not None] if config['reads_type'] == 'pair' else self.fastqs # mb None is better
-		self.fastq_r = [fq for fq in self.fastqs if re.match('.*_R2_.*', fq) is not None] if config['reads_type'] == 'pair' else None
-
+		self.fastqs = glob(self.fastq_dir_path+'/*.fastq.gz')
+		self.fastq_f = [fq for fq in self.fastqs if re.match('.*_R1_.*', fq) is not None] if PAIR else self.fastqs # mb None is better
+		self.fastq_r = [fq for fq in self.fastqs if re.match('.*_R2_.*', fq) is not None] if PAIR else None
 
 class SampleSeries(FastqList):
 
@@ -64,22 +67,22 @@ class SampleDataframe(SampleSeries):
 class MapNames:
 
 	def __init__(self, grm_dir_path: str|None, tmr_dir_path: str|None) -> None:
-		self.grm = SampleDataframe(grm_dir_path) if grm_dir_path is not None else None
-		self.tmr = SampleDataframe(tmr_dir_path) if tmr_dir_path is not None else None
+		self.grm = SampleDataframe(grm_dir_path) if GERMLINE else None
+		self.tmr = SampleDataframe(tmr_dir_path) if SOMATIC else None
 		self.distances = None
 		self.map_df = None
 		self.__estimate_distances()
 		self.__map_names()
 
 	def __estimate_distances(self):
-		if self.grm is not None and self.tmr is not None:
+		if GERMLINE and SOMATIC:
 			distances = []
 			for g, t in product(self.grm.sample.tolist(), self.tmr.sample.tolist()):
 				distances.append((g, t, SequenceMatcher(None, g, t).ratio()))
 			self.distances = distances
 
 	def __map_names(self):
-		if self.grm is not None and self.tmr is not None:
+		if GERMLINE and SOMATIC is not None:
 			map_df = pd.DataFrame(self.distances)
 			map_df.columns = ['grm_samples', 'tmr_samples', 'distance']
 			map_df = map_df.sort_values('distance', ascending=False)
@@ -95,7 +98,9 @@ class MapData(MapNames):
 		super().__init__(grm_dir_path, tmr_dir_path)
 		self.wide_df = pd.DataFrame()
 		self.__merge_data()
-		self.__add_suffixes()
+		self.__add_patient_ids()
+		self.__add_suffixes_to_samples()
+		self.__remove_suffixes_from_cols()
 
 	def __merge_data(self):
 		self.wide_df = pd.merge(self.map_df, self.grm.sample_df, how='outer', left_on='grm_samples', right_on='sample')
@@ -105,9 +110,20 @@ class MapData(MapNames):
 		self.wide_df = self.wide_df.drop('sample', axis=1)
 		self.wide_df.columns = ['tmr_' + str(col) if col.startswith('fastq') else col for col in self.wide_df.columns]
 
-	def __add_suffixes(self):
+	def __add_patient_ids(self):
+		if self.wide_df['tmr_samples'].isna().sum() < self.wide_df['grm_samples'].isna().sum():
+			self.wide_df['patients'] = self.wide_df['tmr_samples']
+		else:
+			self.wide_df['patients'] = self.wide_df['grm_samples']
+		
+	def __add_suffixes_to_samples(self):
 		self.wide_df['grm_samples'] = self.wide_df['grm_samples'] + '_grm'
 		self.wide_df['tmr_samples'] = self.wide_df['tmr_samples'] + '_tmr'
+
+	def __remove_suffixes_from_cols(self):
+		if PAIR is False:
+			self.wide_df.columns = self.wide_df.columns.str.rstrip('_f')
+
 
 class NGSData(MapData):
 	def __init__(self, grm_dir_path: str|None, tmr_dir_path: str|None) -> None:
@@ -116,13 +132,22 @@ class NGSData(MapData):
 		self.__create_long_dataframe()
 
 	def __create_long_dataframe(self):
-		self.long_df = pd.DataFrame(
-			{
-			"samples": np.concatenate([self.wide_df.loc[:, 'tmr_samples'].values,
-									self.wide_df.loc[:, 'grm_samples'].values]),
-			"fastq_forward": np.concatenate([self.wide_df.loc[:, "tmr_fastq_f"].values,
-											self.wide_df.loc[:, "grm_fastq_f"].values]),
-			"fastq_reverse": np.concatenate([self.wide_df.loc[:, "tmr_fastq_r"].values,
-											self.wide_df.loc[:, "grm_fastq_r"].values])
-			}
-									)
+		if PAIR:
+			self.long_df = pd.DataFrame(
+				{
+				"samples": np.concatenate([self.wide_df.loc[:, 'tmr_samples'].values,
+										self.wide_df.loc[:, 'grm_samples'].values]),
+				"fastq_forward": np.concatenate([self.wide_df.loc[:, "tmr_fastq_f"].values,
+												self.wide_df.loc[:, "grm_fastq_f"].values]),
+				"fastq_reverse": np.concatenate([self.wide_df.loc[:, "tmr_fastq_r"].values,
+												self.wide_df.loc[:, "grm_fastq_r"].values])
+				}
+										)
+			self.long_df = self.long_df.dropna(axis=0, how='all')
+		else:
+			self.long_df = pd.DataFrame(
+				{
+				"samples": np.concatenate([self.wide_df.loc[:, 'tmr_samples'].values,
+										self.wide_df.loc[:, 'grm_samples'].values]),
+				"fastq_forward": np.concatenate([self.wide_df.loc[:, "tmr_fastq"].values,
+										self.wide_df.loc[:, "grm_fastq"].values])})

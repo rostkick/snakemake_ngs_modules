@@ -6,7 +6,7 @@ rule deepvariant:
 	log: 'results/{run}/logs/germline_calling/{sample}.deepvariant.log'
 	params: 
 		deepvariant=config['tools']['deepvariant'],
-		ref=config['GRCh38']['GATK_b38']['reference_fasta'],
+		ref=config['references']['genome_fa'],
 		panel_capture=config['panel_capture']['target']
 	threads: workflow.cores/2
 	shell: """singularity run \

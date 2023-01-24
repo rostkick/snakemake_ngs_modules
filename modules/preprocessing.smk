@@ -26,10 +26,10 @@ rule prep_bqsr:
 	output: 'results/{run}/bam/{sample}.bqsr.recal.table'
 	log: 'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params: 
-		ref=config['GRCh38']['GATK_b38']['reference_fasta'],
-		snps=config['GRCh38']['GATK_b38']['snps'],
-		indels=config['GRCh38']['GATK_b38']['indels'],
-		wgs_calling_regions=config['GRCh38']['GATK_b38']['wgs_calling_regions'] # <-- WGS intervals for exome?
+		ref=config['references']['genome_fa'],
+		snps=config['references']['snps'],
+		indels=config['references']['indels'],
+		wgs_calling_regions=config['references']['wgs_calling_regions'] # <-- WGS intervals for exome?
 	shell: """gatk BaseRecalibrator \
 				-R {params.ref} \
 				-I {input.bam} \
@@ -45,8 +45,8 @@ rule apply_bqsr:
 	output: "results/{run}/bam/{sample}.final.bam"
 	log: 'results/{run}/logs/prep/{sample}.bqsr_apply.log'
 	params: 
-		ref=config['GRCh38']['GATK_b38']['reference_fasta'],
-		wgs_calling_regions=config['GRCh38']['GATK_b38']['wgs_calling_regions']
+		ref=config['references']['genome_fa'],
+		wgs_calling_regions=config['references']['wgs_calling_regions']
 	threads: workflow.cores/len(SAMPLES)
 	shell: """gatk ApplyBQSR \
 				-R {params.ref} \
@@ -54,22 +54,3 @@ rule apply_bqsr:
 				-L {params.wgs_calling_regions} \
 				-bqsr {input.bqsr} \
 				-O {output} &>{log}"""
-
-rule CalculateHsMetrics:
-	input: "results/{run}/bam/{sample}.final.bam"
-	output: "results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv"
-	log: 'results/{run}/logs/hs_metrics/{sample}.hs_metrics.log'
-	params:
-		picard = config['tools']['picard_old'],
-		fasta_reference = config['GRCh38']['GATK_b38']['reference_fasta'],
-		intervals = config['panel_capture']['intervals']
-	shell: """java -jar {params.picard} CalculateHsMetrics \
-				INPUT={input} \
-				OUTPUT={output} \
-				BAIT_INTERVALS={params.intervals} \
-				TARGET_INTERVALS={params.intervals} \
-				NEAR_DISTANCE=0 2>{log}"""
-
-rule hs_metrics_status:
-	input: "results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv"
-	output: touch("results/{run}/bam/hs_metrics/{sample}.metrics_status")

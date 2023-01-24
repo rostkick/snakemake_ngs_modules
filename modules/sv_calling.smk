@@ -4,7 +4,7 @@ rule manta_germline_joint_calling:
 	params: 
 		manta=config['tools']['manta']['configManta'],
 		input_bams=lambda wc, input: [f'--bam {i}' for i in input],
-		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta'],
+		reference_fasta=config['references']['genome_fa'],
 		rundir='results/{run}/germline/sv'
 	log: 'results/{run}/logs/germline/manta.log'
 	conda: "env/manta.yml"
@@ -22,7 +22,7 @@ rule convertInversion:
 	params:
 		convertInversion=config['tools']['manta']['convertInversion'],
 		samtools=config['tools']['samtools'],
-		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta']
+		reference_fasta=config['references']['genome_fa']
 	conda: "env/manta.yml"
 	shell: "python {params.convertInversion} {params.samtools} {params.reference_fasta} {input} > {output}"
 

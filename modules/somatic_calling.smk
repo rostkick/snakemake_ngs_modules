@@ -1,8 +1,8 @@
 rule CollectF1R2Counts:
-	input: lambda wc: get_somatic_input(wc, data)['tumor']
+	input: lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 'results/{run}/somatic/{patient}/tumor-artifact-prior-table.tsv'
 	log: 'results/{run}/logs/somatic/{patient}/CollectF1R2Counts.log'
-	params: reference=config['GRCh38']['GATK_b38']['reference_fasta']
+	params: reference=config['references']['genome_fa']
 	shell: """gatk CollectF1R2Counts \
 				-R {params.reference} \
 				-I {input} \
@@ -18,17 +18,17 @@ rule LearnReadOrientationModel:
 
 rule Mutect2:
 	input: 
-		bam_tumor=lambda wc: get_somatic_input(wc, data)['tumor'],
-		bam_germline=lambda wc: get_somatic_input(wc, data)['germline']
+		bam_tumor=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor'],
+		bam_germline=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
 	output: 
 		mutect2_raw='results/{run}/somatic/{patient}/mutect2.vcf.gz',
 		bam='results/{run}/somatic/{patient}/mutect2.bamout.bam'
 	log: 'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
-		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta'],
-		sample_name=lambda wc: data.loc[:, 'germline_samples'][data.loc[:, 'patient']==wc.patient].values[0],
-		germline_res=config['GRCh38']['somatic_hg38']['af_only_gnomad'],
-		panel_of_normals=config['GRCh38']['GATK_b38']['snps']
+		reference_fasta=config['references']['genome_fa'],
+		sample_name=lambda wc: ngs.wide_df.loc[:, 'grm_samples'][ngs.wide_df.loc[:, 'patients']==wc.patient].values[0],
+		germline_res=config['references']['af_only_gnomad'],
+		panel_of_normals=config['references']['snps']
 	shell: """gatk Mutect2 \
 				-R {params.reference_fasta} \
 				-I {input.bam_tumor} \
@@ -40,12 +40,12 @@ rule Mutect2:
 				--panel-of-normals {params.panel_of_normals} 2>{log}"""
 
 rule GetPileupSummaries_tumor:
-	input: lambda wc: get_somatic_input(wc, data)['tumor']
+	input: lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 'results/{run}/somatic/{patient}/tumor.pileups.table'
 	log: 'results/{run}/logs/somatic/{patient}/GetPileupSummaries_tumor.log'
 	params: 
-		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta'],
-		small_exac_common=config['GRCh38']['somatic_hg38']['small_exac_common']
+		reference_fasta=config['references']['genome_fa'],
+		small_exac_common=config['references']['small_exac_common']
 	shell: """gatk GetPileupSummaries \
 				-I {input} \
 				-R {params.reference_fasta} \
@@ -54,12 +54,12 @@ rule GetPileupSummaries_tumor:
 				-O {output} 2>{log}"""
 
 rule GetPileupSummaries_germline:
-	input: lambda wc: get_somatic_input(wc, data)['germline']
+	input: lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
 	output: 'results/{run}/somatic/{patient}/germline.pileups.table'
 	log: 'results/{run}/logs/somatic/{patient}/GetPileupSummaries_germline.log'
 	params: 
-		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta'],
-		small_exac_common=config['GRCh38']['somatic_hg38']['small_exac_common']
+		reference_fasta=config['references']['genome_fa'],
+		small_exac_common=config['references']['small_exac_common']
 	shell: """gatk GetPileupSummaries \
 				-I {input} \
 				-R {params.reference_fasta} \
@@ -86,7 +86,7 @@ rule FilterMutectCalls:
 	output: 'results/{run}/somatic/{patient}/mutect2.filtered.vcf.gz'
 	log: 'results/{run}/logs/somatic/{patient}/FilterMutectCalls.log'
 	params: 
-		reference_fasta=config['GRCh38']['GATK_b38']['reference_fasta']
+		reference_fasta=config['references']['genome_fa']
 	shell: """gatk FilterMutectCalls \
 				-R {params.reference_fasta} \
 				-V {input.mutect2_raw} \
