@@ -33,7 +33,7 @@ if ('somatic' in MODE) | (MODE == 'all'):
 else:
 	SAMPLES = GERMLINE_SAMPLES
 	PATIENTS = ''
-	data.rename(columns={'germline_samples':'samples',
+	data.rename(columns={'germline_samples': 'samples',
 						'germline_forward': 'fastq_forward',
 						'germline_reverse': 'fastq_reverse'}, inplace=True)
 	long_data = data.copy()
