@@ -7,8 +7,7 @@ rule vep_germline:
 		reference_fasta=config['references']['genome_fa'],
 		cache=config['tools']['vep']['cache'],
 		plugins=config['tools']['vep']['plugins'],
-		mpc_data=config['tools']['vep']['plugins_data']['MPC'],
-		pli_data=config['tools']['vep']['plugins_data']['gnomAD_pLI']
+		mpc_data=config['tools']['vep']['plugins_data']['MPC']
 	log: 'results/{run}/logs/germline/{sample}.annotation.log'
 	threads: workflow.cores
 	shell: """singularity run -B /mnt:/mnt {params.vep} \
@@ -27,7 +26,6 @@ rule vep_germline:
 				--no_escape \
 				--canonical \
 				--plugin MPC,{params.mpc_data} \
-				--plugin ExACpLI,{params.pli_data} \
 				--compress_output bgzip \
 				--use_given_ref \
 				--fasta {params.reference_fasta} \
