@@ -7,9 +7,10 @@ rule align:
 	params: 
 		bwa_mem2=config['tools']['bwa_mem2'],
 		reference=config['references']['genome_fa'],
+		samtools=config['tools']['samtools']
 	threads: workflow.cores/len(SAMPLES)
 	shell: """{params.bwa_mem2} mem \
 				-M -t {threads} -R '@RG\\tID:lane\\tSM:{wildcards.sample}\\tLB:1\\tPL:ILLUMINA' \
 				{params.reference} {input.fr} {input.rr} 2>{log} |\
-			samtools view -bS -o {output} -
+			{params.samtools} view -bS -o {output} -
 			"""
