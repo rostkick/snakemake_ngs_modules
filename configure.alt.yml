@@ -15,6 +15,7 @@ liftover:
 
 references:
   genome_fa: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta"
+  dict: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta.dict"
   snps: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.dbsnp138.vcf"
   indels: "/mnt/archive/shared/references/GRCh38/GATK_b38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
   wgs_calling_regions: "/mnt/archive/shared/references/GRCh38/GATK_b38/wgs_calling_regions.hg38.interval_list"
