@@ -1,6 +1,7 @@
 rule vep_germline:
-	input: "results/{run}/germline/vcf/{sample}.vcf.gz"
-	output: "results/{run}/germline/vcf/{sample}.germline.annotated.vcf.gz"
+	wildcard_constraints: sample="|".join(GERMLINE_SAMPLES)
+	input: "results/{run}/germline/vcf/{sample}.37.sorted.vcf.gz"
+	output: "results/{run}/germline/vcf/{sample}.37.annotated.vcf.gz"
 	params: 
 		vep=config['tools']['vep']['path'],
 		main_assembly=config['main_assembly'],
@@ -38,17 +39,17 @@ rule vep_germline:
 
 use rule vep_germline as vep_germline_joint with:
 	input:
-		'results/{run}/germline/vcf/cohort.filtered.vcf.gz'
+		"results/{run}/germline/vcf/cohort.37.sorted.vcf.gz"
 	output:
-		'results/{run}/germline/vcf/germline.annotated.vcf.gz'
+		'results/{run}/germline/vcf/cohort.37.annotated.vcf.gz'
 	log:
 		'results/{run}/logs/germline/annotation.log'
 
 use rule vep_germline as vep_somatic with:
 	input: 
-		'results/{run}/somatic/{patient}/mutect2.filtered.pass.vcf.gz'
+		'results/{run}/somatic/{patient}/mutect2.37.sorted.vcf.gz'
 	output: 
-		'results/{run}/somatic/{patient}/annotation/somatic.annotated.vcf.gz'
+		'results/{run}/somatic/{patient}/mutect2.37.annotated.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 

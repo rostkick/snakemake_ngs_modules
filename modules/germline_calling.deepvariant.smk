@@ -27,7 +27,7 @@ rule make_gvcf_list:
 
 rule merge_glnexus:
 	input: "results/{run}/germline/vcf/gvcfs.list"
-	output: "results/{run}/germline/vcf/cohort.filtered.vcf.gz"
+	output: "results/{run}/germline/vcf/cohort.vcf.gz"
 	log: 'results/{run}/logs/germline_calling/glnexus.log'
 	params:
 		glnexus_cli=config['tools']['glnexus_cli'],

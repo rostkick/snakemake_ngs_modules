@@ -97,7 +97,7 @@ rule FilterMutectCalls:
 
 rule FilterPASS_exclude_normal:
 	input: 'results/{run}/somatic/{patient}/mutect2.filtered.vcf.gz'
-	output: 'results/{run}/somatic/{patient}/mutect2.filtered.pass.vcf.gz'
+	output: 'results/{run}/somatic/{patient}/mutect2.final.vcf.gz'
 	threads: workflow.cores/8
 	shell: """tumor_sample=$(zcat {input} | \
 					grep -oP '##tumor_sample=\K.+') &&\

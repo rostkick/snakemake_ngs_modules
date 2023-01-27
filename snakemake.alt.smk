@@ -15,14 +15,15 @@ GERMLINE_SAMPLES = ngs.wide_df.loc[:, "grm_samples"].dropna().tolist()
 SOMATIC_SAMPLES = ngs.wide_df.loc[:, "tmr_samples"].dropna().tolist()
 
 wildcard_constraints:
-	sample="|".join(SAMPLES)
+	sample="|".join(SAMPLES),
+	patient="|".join(PATIENTS)
 
 def final_inputs():
 	# germline
-	germline_inputs = [f'results/{RUN}/germline/vcf/germline.annotated.vcf.gz'] + \
-					[f'results/{RUN}/germline/vcf/{sample}.germline.annotated.vcf.gz' for sample in SAMPLES]
+	germline_inputs = [f'results/{RUN}/germline/vcf/cohort.37.annotated.vcf.gz'] + \
+					[f'results/{RUN}/germline/vcf/{sample}.37.annotated.vcf.gz' for sample in GERMLINE_SAMPLES]
 	# somatic
-	somatic_inputs = [f'results/{RUN}/somatic/{patient}/annotation/somatic.annotated.vcf.gz' for patient in PATIENTS]
+	somatic_inputs = [f'results/{RUN}/somatic/{patient}/mutect2.37.annotated.vcf.gz' for patient in PATIENTS]
 	# metrics
 	metrics = [f"results/{RUN}/bam/hs_metrics/{sample}.hs_metrics.tsv" for sample in SAMPLES]
 	if GERMLINE and SOMATIC is False:
