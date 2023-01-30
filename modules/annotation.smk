@@ -4,7 +4,7 @@ rule vep_germline:
 	output: "results/{run}/germline/vcf/{sample}.37.annotated.vcf.gz"
 	params: 
 		vep=config['tools']['vep']['path'],
-		main_assembly=config['main_assembly'],
+		anno_assembly=config['anno_assembly'],
 		reference_fasta=config['references']['genome_fa'],
 		cache=config['tools']['vep']['cache'],
 		plugins=config['tools']['vep']['plugins'],
@@ -19,7 +19,7 @@ rule vep_germline:
 				--vcf \
 				--force_overwrite \
 				--force \
-				--assembly {params.main_assembly} \
+				--assembly {params.anno_assembly} \
 				--af \
 				--af_gnomad \
 				--max_af \

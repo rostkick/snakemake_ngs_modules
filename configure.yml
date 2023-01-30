@@ -1,40 +1,48 @@
+grm_dir: 'data/germline_dir'
+tmr_dir: 'data/tumor_dir'
+
+run: 'bla'
+analysis_type: 'germline_and_somatic'
+reads_type: 'pair'
+
+anno_assembly: 'GRCh38'
+
 snakemake_modules: "/mnt/tank/scratch/rskitchenko/projects/snakemake_ngs_modules/modules/"
 
-chain: "/mnt/tank/scratch/rskitchenko/projects/medulo/hg38ToHg19.over.chain_mod.gz"
-reference_37: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
+liftover:
+  chain: "/mnt/tank/scratch/rskitchenko/projects/medulo/hg38ToHg19.over.chain_mod.gz"
+  reference_fasta: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
 
-GRCh38:
-  GATK_b38:
-    reference_fasta: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta"
-    snps: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.dbsnp138.vcf"
-    indels: "/mnt/archive/shared/references/GRCh38/GATK_b38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
-    wgs_calling_regions: "/mnt/archive/shared/references/GRCh38/GATK_b38/wgs_calling_regions.hg38.interval_list"
-  somatic_hg38:
-    af_only_gnomad: "/mnt/archive/shared/references/GRCh38/somatic-hg38/af-only-gnomad.hg38.vcf.gz"
-    small_exac_common: "/mnt/archive/shared/references/GRCh38/somatic-hg38/small_exac_common_3.hg38.vcf.gz"
+references:
+  genome_fa: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta"
+  dict: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta.dict"
+  snps: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.dbsnp138.vcf"
+  indels: "/mnt/archive/shared/references/GRCh38/GATK_b38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
+  wgs_calling_regions: "/mnt/archive/shared/references/GRCh38/GATK_b38/wgs_calling_regions.hg38.interval_list"
+  af_only_gnomad: "/mnt/archive/shared/references/GRCh38/somatic-hg38/af-only-gnomad.hg38.vcf.gz"
+  small_exac_common: "/mnt/archive/shared/references/GRCh38/somatic-hg38/small_exac_common_3.hg38.vcf.gz"
 
 tools:
   samtools: "/usr/bin/samtools"
   bwa_mem2: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/bwa-mem2"
   picard_old: "/nfs/home/rskitchenko/picard-tools-2.0.1/picard.jar"
+  configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
+  convertInversion: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/share/manta-1.6.0-1/libexec/convertInversion.py"
+  deepvariant: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/deepvariant_1.2.0.sif"
+  glnexus_cli: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/GLnexus/glnexus_cli"
   manta:
     configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
     convertInversion: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/share/manta-1.6.0-1/libexec/convertInversion.py"
-  deepvariant: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/deepvariant_1.2.0.sif"
-  glnexus_cli: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/GLnexus/glnexus_cli"
-  vep:
-    vep: "/mnt/tank/scratch/rskitchenko/ensembl-vep_latest.sif"
+  vep: 
+    path: "/mnt/tank/scratch/rskitchenko/ensembl-vep_latest.sif"
     cache: "/mnt/tank/scratch/rskitchenko/.vep"
     plugins: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins"
     plugins_data:
       MPC: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_constraint_official_mpc_values_v2.txt.gz"
       ExACpLI: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt"
       gnomAD_pLI: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins/gnomad.v2.1.1.lof_metrics.by_gene.gene_pli.txt"
-      #gnomAD_pLI: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/gnomad.v2.1.1.lof_metrics.by_gene.txt"
-      
 
 panel_capture:
   target: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.bed"
   intervals: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.intervals"
   interval_list: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.interval_list"
-

@@ -1,3 +1,9 @@
+def get_somatic_input(wc, data):
+	sample_tumor = data.loc[:, 'tmr_samples'][data['patients']==wc.patient].values[0]
+	sample_germline = data.loc[:, 'grm_samples'][data.loc[:, 'patients']==wc.patient].values[0]
+	return {'tumor': f'results/{wc.run}/bam/{sample_tumor}.final.bam',
+			'germline': f'results/{wc.run}/bam/{sample_germline}.final.bam'}
+
 rule CollectF1R2Counts:
 	input: lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 'results/{run}/somatic/{patient}/tumor-artifact-prior-table.tsv'
