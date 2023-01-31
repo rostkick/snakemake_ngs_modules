@@ -1,11 +1,3 @@
-rule BedToIntervalList:
-	input: config["panel_capture"]["target"]
-	output: "results/{run}/capture.intervals"
-	params:
-		picard_old=config['tools']['picard_old'],
-		ref_dict=config['references']['dict']
-	shell: "java -jar {params.picard_old} BedToIntervalList I={input} SD={params.ref_dict} O={output}"
-
 rule CalculateHsMetrics:
 	input: 
 		bam="results/{run}/bam/{sample}.final.bam",

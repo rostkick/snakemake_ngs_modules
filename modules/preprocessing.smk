@@ -2,7 +2,8 @@ rule sort_bam:
 	input: "results/{run}/bam/{sample}.raw.bam"
 	output: "results/{run}/bam/{sample}.sorted.bam"
 	threads: workflow.cores/len(SAMPLES)
-	shell: 'samtools sort -@ {threads} -o {output} {input}'
+	params: samtools=config['tools']['samtools']
+	shell: '{params.samtools} sort -@ {threads} -o {output} {input}'
 
 rule dedup:
 	input: "results/{run}/bam/{sample}.sorted.bam"
@@ -17,7 +18,8 @@ rule dedup:
 rule index_dedup:
 	input: "results/{run}/bam/{sample}.dedup.bam"
 	output: "results/{run}/bam/{sample}.dedup.bam.bai"
-	shell: 'samtools index {input}'
+	params: samtools=config['tools']['samtools']
+	shell: '{params.samtools} index {input}'
 
 rule prep_bqsr:
 	input: 
@@ -54,3 +56,11 @@ rule apply_bqsr:
 				-L {params.wgs_calling_regions} \
 				-bqsr {input.bqsr} \
 				-O {output} &>{log}"""
+
+rule BedToIntervalList:
+	input: config["panel_capture"]["target"]
+	output: "results/{run}/capture.intervals"
+	params:
+		picard_old=config['tools']['picard_old'],
+		ref_dict=config['references']['dict']
+	shell: "java -jar {params.picard_old} BedToIntervalList I={input} SD={params.ref_dict} O={output}"

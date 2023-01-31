@@ -98,7 +98,6 @@ class MappedGermTumor:
 		distances = self.estimate_distances(grm, tmr)
 		self.df = self.map_names(distances)
 
-
 	def estimate_distances(self, grm: DataProcessor, tmr: DataProcessor) -> list:
 		distances = []
 		for g, t in product(grm.df['sample'].tolist(), tmr.df['sample'].tolist()):
@@ -170,12 +169,11 @@ class NGSWideJointPaired(NGSWide):
 		return wide_df
 
 	def add_patient_ids(self, wide_df: pd.DataFrame) -> pd.DataFrame:
-		if wide_df['tmr_samples'].isna().sum() < wide_df['grm_samples'].isna().sum():
-			wide_df['patients'] = wide_df['tmr_samples']
-		else:
-			wide_df['patients'] = wide_df['grm_samples']
+		wide_df['patients'] = wide_df['grm_samples']
+		if len(wide_df[wide_df['patients'].isnull()]) > 0:
+			wide_df.loc[wide_df['grm_samples'].isna(), 'patients'] = wide_df.query('grm_samples.isna()')['tmr_samples']
 		return wide_df
-		
+
 	def add_suffixes(self, wide_df: pd.DataFrame) -> pd.DataFrame:
 		wide_df['grm_samples'] = wide_df['grm_samples'] + '_grm'
 		wide_df['tmr_samples'] = wide_df['tmr_samples'] + '_tmr'
