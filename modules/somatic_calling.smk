@@ -22,10 +22,11 @@ rule LearnReadOrientationModel:
 				-I {input} \
 				-O {output} 2>{log}"""
 
-rule Mutect2:
+rule Mutect2_tumor_vs_normal:
 	input: 
 		bam_tumor=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor'],
-		bam_germline=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
+		bam_germline=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline'],
+		capture="results/{run}/capture.intervals"
 	output: 
 		mutect2_raw='results/{run}/somatic/{patient}/mutect2.vcf.gz',
 		bam='results/{run}/somatic/{patient}/mutect2.bamout.bam'
@@ -42,6 +43,7 @@ rule Mutect2:
 				-I {input.bam_germline} \
 				-normal {params.sample_name} \
 				-bamout {output.bam} \
+				-L {input.capture} \
 				--germline-resource {params.germline_res} \
 				--panel-of-normals {params.panel_of_normals} 2>{log}"""
 
@@ -104,10 +106,11 @@ rule FilterMutectCalls:
 rule FilterPASS_exclude_normal:
 	input: 'results/{run}/somatic/{patient}/mutect2.filtered.vcf.gz'
 	output: 'results/{run}/somatic/{patient}/mutect2.final.vcf.gz'
+	params: bcftools=config['tools']['bcftools']
 	threads: workflow.cores/8
 	shell: """tumor_sample=$(zcat {input} | \
 					grep -oP '##tumor_sample=\K.+') &&\
-				bcftools view -i "%FILTER='PASS'" \
+					{params.bcftools} view -i "%FILTER='PASS'" \
 					-s $tumor_sample -t {threads} \
 					-Oz -o {output} {input}"""
 

@@ -31,7 +31,8 @@ rule merge_glnexus:
 	log: 'results/{run}/logs/germline_calling/glnexus.log'
 	params:
 		glnexus_cli=config['tools']['glnexus_cli'],
-		run_dir="results/{run}/germline/vcf/GLnexus.DB"
+		run_dir="results/{run}/germline/vcf/GLnexus.DB",
+		bcftools=config['tools']['bcftools']
 	threads: workflow.cores/2
 	shell: '''rm -rf {params.run_dir} &&\
 				{params.glnexus_cli} \
@@ -40,5 +41,5 @@ rule merge_glnexus:
 				--dir {params.run_dir} \
 				-t {threads} \
 				{input} 2>{log} | \
-				bcftools view --min-ac 1 -i "%FILTER=='.'" -Oz -o {output} - && \
+				{params.bcftools} view --min-ac 1 -i "%FILTER=='.'" -Oz -o {output} - && \
 				rm -rf {params.run_dir}'''

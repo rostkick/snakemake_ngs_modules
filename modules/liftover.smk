@@ -4,14 +4,16 @@ rule liftover_germline:
 		intermediate=temp("results/{run}/germline/vcf/{sample}.37.tmp.vcf.gz"),
 		vcf="results/{run}/germline/vcf/{sample}.37.sorted.vcf.gz"
 	params: 
+		crossmap=config['tools']['crossmap'],
 		chain=config['liftover']['chain'],
-		reference=config['liftover']['reference_fasta']
+		reference=config['liftover']['reference_fasta'],
+		bcftools=config['tools']['bcftools']
 	shell: """
-			CrossMap.py vcf \
+			{params.crossmap} vcf \
 			{params.chain} {input} \
 			{params.reference} {output.intermediate} \
 			--compress --chromid s && \
-			bcftools sort {output.intermediate} -Oz -o {output.vcf}
+			{params.bcftools} sort {output.intermediate} -Oz -o {output.vcf}
 			"""
 
 # rule preannotation_prep_vcf_germline:
