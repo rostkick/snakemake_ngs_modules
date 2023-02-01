@@ -56,5 +56,3 @@ tools:
 
 panel_capture:
   target: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.bed"
-  intervals: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.intervals"
-  interval_list: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.interval_list"

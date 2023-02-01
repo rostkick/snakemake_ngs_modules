@@ -1,5 +1,5 @@
 rule vep_germline:
-	wildcard_constraints: sample="|".join(GERMLINE_SAMPLES)
+	wildcard_constraints: sample="|".join(GRM_SAMPLES)
 	input: "results/{run}/germline/vcf/{sample}.vcf.gz"
 	output: "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
 	params: 
@@ -47,11 +47,19 @@ use rule vep_germline as vep_germline_joint with:
 
 use rule vep_germline as vep_somatic with:
 	input: 
-		'results/{run}/somatic/{patient}/mutect2.final.vcf.gz'
+		'results/{run}/somatic/{patient}/final.vcf.gz'
 	output:
-		'results/{run}/somatic/{patient}/mutect2.annotated.vcf.gz'
+		'results/{run}/somatic/{patient}/annotated.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
+
+use rule vep_germline as vep_somatic_tmr_only with:
+	input: 
+		'results/{run}/somatic/{patient}/final.tmr_only.vcf.gz'
+	output:
+		'results/{run}/somatic/{patient}/annotated.tmr_only.vcf.gz'
+	log: 
+		'results/{run}/logs/somatic/{patient}/annotation.tmr_only.log'
 
 use rule vep_germline as vep_sv_germline with:
 	input: 

@@ -21,7 +21,7 @@ rule deepvariant:
 				--num_shards={threads} &>{log} || true"""
 
 rule make_gvcf_list:
-	input: expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=GERMLINE_SAMPLES)
+	input: expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=GRM_SAMPLES)
 	output: "results/{run}/germline/vcf/gvcfs.list"
 	shell: "echo {input} | sed 's/\\s/\\n/g' > {output}"
 
