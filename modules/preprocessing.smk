@@ -28,10 +28,10 @@ rule prep_bqsr:
 	output: 'results/{run}/bam/{sample}.bqsr.recal.table'
 	log: 'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params: 
-		ref=config['references']['genome_fa'],
-		snps=config['references']['snps'],
-		indels=config['references']['indels'],
-		wgs_calling_regions=config['references']['wgs_calling_regions'] # <-- WGS intervals for exome?
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		snps=config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps'],
+		indels=config['references38']['indels'] if config['assembly'] == 'GRCh38' else config['references37']['indels'],
+		wgs_calling_regions=config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
 	shell: """gatk BaseRecalibrator \
 				-R {params.ref} \
 				-I {input.bam} \
@@ -47,8 +47,8 @@ rule apply_bqsr:
 	output: "results/{run}/bam/{sample}.final.bam"
 	log: 'results/{run}/logs/prep/{sample}.bqsr_apply.log'
 	params: 
-		ref=config['references']['genome_fa'],
-		wgs_calling_regions=config['references']['wgs_calling_regions']
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		wgs_calling_regions=config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
 	threads: workflow.cores/len(SAMPLES)
 	shell: """gatk ApplyBQSR \
 				-R {params.ref} \
@@ -62,5 +62,5 @@ rule BedToIntervalList:
 	output: "results/{run}/capture.intervals"
 	params:
 		picard_old=config['tools']['picard_old'],
-		ref_dict=config['references']['dict']
+		ref_dict=config['references38']['dict'] if config['assembly'] == 'GRCh38' else config['references37']['dict'],
 	shell: "java -jar {params.picard_old} BedToIntervalList I={input} SD={params.ref_dict} O={output}"

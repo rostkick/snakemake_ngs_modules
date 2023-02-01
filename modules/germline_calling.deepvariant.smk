@@ -6,7 +6,7 @@ rule deepvariant:
 	log: 'results/{run}/logs/germline_calling/{sample}.deepvariant.log'
 	params: 
 		deepvariant=config['tools']['deepvariant'],
-		ref=config['references']['genome_fa'],
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
 		panel_capture=config['panel_capture']['target']
 	threads: workflow.cores/2
 	shell: """singularity run \

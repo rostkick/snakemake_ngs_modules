@@ -1,11 +1,11 @@
 rule vep_germline:
 	wildcard_constraints: sample="|".join(GERMLINE_SAMPLES)
-	input: "results/{run}/germline/vcf/{sample}.37.sorted.vcf.gz"
-	output: "results/{run}/germline/vcf/{sample}.37.annotated.vcf.gz"
+	input: "results/{run}/germline/vcf/{sample}.vcf.gz"
+	output: "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
 	params: 
+		assembly=config['assembly'],
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
 		vep=config['tools']['vep']['path'],
-		anno_assembly=config['anno_assembly'],
-		reference_fasta=config['references']['genome_fa'],
 		cache=config['tools']['vep']['cache'],
 		plugins=config['tools']['vep']['plugins'],
 		mpc_data=config['tools']['vep']['plugins_data']['MPC']
@@ -19,7 +19,7 @@ rule vep_germline:
 				--vcf \
 				--force_overwrite \
 				--force \
-				--assembly {params.anno_assembly} \
+				--assembly {params.assembly} \
 				--af \
 				--af_gnomad \
 				--max_af \
@@ -29,7 +29,7 @@ rule vep_germline:
 				--plugin MPC,{params.mpc_data} \
 				--compress_output bgzip \
 				--use_given_ref \
-				--fasta {params.reference_fasta} \
+				--fasta {params.ref} \
 				--dir_cache {params.cache} \
 				--dir_plugins {params.plugins} \
 				--input_file {input} \
@@ -39,17 +39,17 @@ rule vep_germline:
 
 use rule vep_germline as vep_germline_joint with:
 	input:
-		"results/{run}/germline/vcf/cohort.37.sorted.vcf.gz"
+		"results/{run}/germline/vcf/cohort.vcf.gz"
 	output:
-		'results/{run}/germline/vcf/cohort.37.annotated.vcf.gz'
+		'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
 	log:
 		'results/{run}/logs/germline/annotation.log'
 
 use rule vep_germline as vep_somatic with:
 	input: 
-		'results/{run}/somatic/{patient}/mutect2.37.sorted.vcf.gz'
-	output: 
-		'results/{run}/somatic/{patient}/mutect2.37.annotated.vcf.gz'
+		'results/{run}/somatic/{patient}/mutect2.final.vcf.gz'
+	output:
+		'results/{run}/somatic/{patient}/mutect2.annotated.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 

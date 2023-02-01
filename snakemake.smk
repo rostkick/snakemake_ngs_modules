@@ -21,10 +21,10 @@ wildcard_constraints:
 
 def final_inputs():
 	# germline
-	germline_inputs = [f'results/{run}/germline/vcf/cohort.37.annotated.vcf.gz' for run in [config['run']]] + \
-					[f'results/{run}/germline/vcf/{sample}.37.annotated.vcf.gz' for run, sample in product([config['run']], GERMLINE_SAMPLES)]
+	germline_inputs = [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]] + \
+					[f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], GERMLINE_SAMPLES)]
 	# somatic
-	somatic_inputs = [f'results/{run}/somatic/{patient}/mutect2.37.annotated.vcf.gz' for run, patient in product([config['run']], GRM_VS_TMR)]
+	somatic_inputs = [f'results/{run}/somatic/{patient}/mutect2.annotated.vcf.gz' for run, patient in product([config['run']], GRM_VS_TMR)]
 	# metrics
 	metrics = [f"results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv" for run, sample in product([config['run']], SAMPLES)]
 	if ngs_setup.GRM and ngs_setup.TMR is False:
@@ -53,6 +53,6 @@ include: config["snakemake_modules"] + "preprocessing.smk"
 include: config["snakemake_modules"] + "collect_metrics.smk"
 include: config["snakemake_modules"] + "germline_calling.deepvariant.smk"
 include: config["snakemake_modules"] + "somatic_calling.smk"
-include: config["snakemake_modules"] + "sv_calling.smk"
-include: config["snakemake_modules"] + "liftover.smk"
+# include: config["snakemake_modules"] + "sv_calling.smk"
+# include: config["snakemake_modules"] + "liftover.smk"
 include: config["snakemake_modules"] + "annotation.smk"

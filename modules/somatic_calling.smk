@@ -8,9 +8,9 @@ rule CollectF1R2Counts:
 	input: lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 'results/{run}/somatic/{patient}/tumor-artifact-prior-table.tsv'
 	log: 'results/{run}/logs/somatic/{patient}/CollectF1R2Counts.log'
-	params: reference=config['references']['genome_fa']
+	params: ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
 	shell: """gatk CollectF1R2Counts \
-				-R {params.reference} \
+				-R {params.ref} \
 				-I {input} \
 				-O {output} 2>{log}"""
 
@@ -32,12 +32,12 @@ rule Mutect2_tumor_vs_normal:
 		bam='results/{run}/somatic/{patient}/mutect2.bamout.bam'
 	log: 'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
-		reference_fasta=config['references']['genome_fa'],
 		sample_name=lambda wc: ngs.wide_df.loc[:, 'grm_samples'][ngs.wide_df.loc[:, 'patients']==wc.patient].values[0],
-		germline_res=config['references']['af_only_gnomad'],
-		panel_of_normals=config['references']['snps']
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		germline_res=config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
+		panel_of_normals=config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
 	shell: """gatk Mutect2 \
-				-R {params.reference_fasta} \
+				-R {params.ref} \
 				-I {input.bam_tumor} \
 				-O {output.mutect2_raw} \
 				-I {input.bam_germline} \
@@ -52,11 +52,11 @@ rule GetPileupSummaries_tumor:
 	output: 'results/{run}/somatic/{patient}/tumor.pileups.table'
 	log: 'results/{run}/logs/somatic/{patient}/GetPileupSummaries_tumor.log'
 	params: 
-		reference_fasta=config['references']['genome_fa'],
-		small_exac_common=config['references']['small_exac_common']
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		small_exac_common=config['references38']['small_exac_common'] if config['assembly'] == 'GRCh38' else config['references37']['small_exac_common']
 	shell: """gatk GetPileupSummaries \
 				-I {input} \
-				-R {params.reference_fasta} \
+				-R {params.ref} \
 				-V {params.small_exac_common} \
 				-L {params.small_exac_common} \
 				-O {output} 2>{log}"""
@@ -66,11 +66,11 @@ rule GetPileupSummaries_germline:
 	output: 'results/{run}/somatic/{patient}/germline.pileups.table'
 	log: 'results/{run}/logs/somatic/{patient}/GetPileupSummaries_germline.log'
 	params: 
-		reference_fasta=config['references']['genome_fa'],
-		small_exac_common=config['references']['small_exac_common']
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		small_exac_common=config['references38']['small_exac_common'] if config['assembly'] == 'GRCh38' else config['references37']['small_exac_common']
 	shell: """gatk GetPileupSummaries \
 				-I {input} \
-				-R {params.reference_fasta} \
+				-R {params.ref} \
 				-V {params.small_exac_common} \
 				-L {params.small_exac_common} \
 				-O {output} 2>{log}"""
@@ -94,9 +94,9 @@ rule FilterMutectCalls:
 	output: 'results/{run}/somatic/{patient}/mutect2.filtered.vcf.gz'
 	log: 'results/{run}/logs/somatic/{patient}/FilterMutectCalls.log'
 	params: 
-		reference_fasta=config['references']['genome_fa']
+		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
 	shell: """gatk FilterMutectCalls \
-				-R {params.reference_fasta} \
+				-R {params.ref} \
 				-V {input.mutect2_raw} \
 				-O {output} \
 				--contamination-table {input.contamination_table} \

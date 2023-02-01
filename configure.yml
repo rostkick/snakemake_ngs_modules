@@ -5,7 +5,7 @@ run: 'bla'
 analysis_type: 'germline_and_somatic'
 reads_type: 'pair'
 
-anno_assembly: 'GRCh38'
+assembly: 'GRCh38'
 
 snakemake_modules: "/mnt/tank/scratch/rskitchenko/projects/snakemake_ngs_modules/modules/"
 
@@ -13,7 +13,17 @@ liftover:
   chain: "/mnt/tank/scratch/rskitchenko/projects/medulo/hg38ToHg19.over.chain_mod.gz"
   reference_fasta: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
 
-references:
+
+references37:
+  genome_fa: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
+  dict: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.dict"
+  snps: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.dbsnp138.vcf"
+  indels: "/mnt/archive/shared/references/GRCh37/GATK_b37/Mills_and_1000G_gold_standard.indels.b37.vcf.gz"
+  wgs_calling_regions: "/mnt/archive/shared/references/GRCh37/GATK_b37/wgs_calling_regions.v1.interval_list"
+  af_only_gnomad: "/mnt/archive/shared/references/GRCh37/GATK_b37/af-only-gnomad.raw.sites.vcf"
+  small_exac_common: "/mnt/archive/shared/references/GRCh37/GATK_b37/small_exac_common_3.vcf"
+
+references38:
   genome_fa: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta"
   dict: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.fasta.dict"
   snps: "/mnt/archive/shared/references/GRCh38/GATK_b38/Homo_sapiens_assembly38.dbsnp138.vcf"
