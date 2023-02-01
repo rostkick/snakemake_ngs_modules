@@ -95,9 +95,9 @@ rule get_pileup_summaries_tmr:
 	wildcard_constraints:
 		patient="|".join(ALL_PATIENTS)
 	input: 
-		bam_tmr=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
+		bam=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 
-		getpileupsum_tmr='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table'
+		getpileupsum='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table'
 	log: 
 		'results/{run}/logs/somatic/{patient}/GetPileupSummaries_tumor.log'
 	params: 
@@ -105,31 +105,22 @@ rule get_pileup_summaries_tmr:
 		exac=config['references38']['small_exac_common'] if config['assembly'] == 'GRCh38' else config['references37']['small_exac_common']
 	shell: 
 		"""gatk GetPileupSummaries \
-				-I {input.bam_tmr} \
+				-I {input.bam} \
 				-R {params.ref} \
 				-V {params.exac} \
 				-L {params.exac} \
 				-O {output.getpileupsum} 2>{log}"""
 
-rule get_pileup_summaries_grm:
+use rule get_pileup_summaries_tmr as get_pileup_summaries_grm with:
 	wildcard_constraints:
 		patient="|".join(GRM_VS_TMR_PATIENTS)
 	input: 
-		bam_grm=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
+		bam=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
 	output: 
-		getpileupsum_grm='results/{run}/somatic/{patient}/getpileupsummaries_grm.table'
+		getpileupsum='results/{run}/somatic/{patient}/getpileupsummaries_grm.table'
 	log: 
 		'results/{run}/logs/somatic/{patient}/GetPileupSummaries_germline.log'
-	params: 
-		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		exac=config['references38']['small_exac_common'] if config['assembly'] == 'GRCh38' else config['references37']['small_exac_common']
-	shell: 
-		"""gatk GetPileupSummaries \
-				-I {input.bam_grm} \
-				-R {params.ref} \
-				-V {params.exac} \
-				-L {params.exac} \
-				-O {output.getpileupsum} 2>{log}"""
+
 
 rule calculate_contamination_grm_vs_tmr:
 	wildcard_constraints:
