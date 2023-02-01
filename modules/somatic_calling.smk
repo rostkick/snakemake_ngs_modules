@@ -5,7 +5,7 @@ def get_somatic_input(wc, data):
 			'germline': f'results/{wc.run}/bam/{sample_germline}.final.bam'}
 
 
-rule Mutect2_tumor_vs_normal:
+rule mutect2_grm_vs_tmr:
 	wildcard_constraints:
 		patient="|".join(GRM_VS_TMR_PATIENTS)
 	input: 
@@ -34,7 +34,7 @@ rule Mutect2_tumor_vs_normal:
 				--germline-resource {params.grm_res} \
 				--panel-of-normals {params.pon} 2>{log}"""
 
-rule Mutect2_tumor_only:
+rule mutect2_tumor_only:
 	wildcard_constraints:
 		patient="|".join(ONLY_TMR_PATIENTS)
 	input: 
@@ -59,7 +59,7 @@ rule Mutect2_tumor_only:
 				--germline-resource {params.grm_res} \
 				--panel-of-normals {params.pon} 2>{log}"""
 
-rule CollectF1R2Counts:
+rule collect_fir2_counts:
 	wildcard_constraints:
 		patient="|".join(ALL_PATIENTS)
 	input: 
@@ -77,7 +77,7 @@ rule CollectF1R2Counts:
 				-O {output.f1r2} 2>{log}"""
 
 
-rule LearnReadOrientationModel:
+rule learn_read_orientation_model:
 	wildcard_constraints:
 		patient="|".join(ALL_PATIENTS)
 	input: 
@@ -91,7 +91,7 @@ rule LearnReadOrientationModel:
 				-I {input.f1r2} \
 				-O {output.rom} 2>{log}"""
 
-rule GetPileupSummaries_tmr:
+rule get_pileup_summaries_tmr:
 	wildcard_constraints:
 		patient="|".join(ALL_PATIENTS)
 	input: 
@@ -111,7 +111,7 @@ rule GetPileupSummaries_tmr:
 				-L {params.exac} \
 				-O {output.getpileupsum} 2>{log}"""
 
-rule GetPileupSummaries_grm:
+rule get_pileup_summaries_grm:
 	wildcard_constraints:
 		patient="|".join(GRM_VS_TMR_PATIENTS)
 	input: 
@@ -131,7 +131,7 @@ rule GetPileupSummaries_grm:
 				-L {params.exac} \
 				-O {output.getpileupsum} 2>{log}"""
 
-rule CalculateContamination_grm_vs_tmr:
+rule calculate_contamination_grm_vs_tmr:
 	wildcard_constraints:
 		patient="|".join(GRM_VS_TMR_PATIENTS)
 	input: 
@@ -147,7 +147,7 @@ rule CalculateContamination_grm_vs_tmr:
 				-O {output.contamination} \
 				-matched {input.getpileupsum_grm} 2>{log}"""
 
-rule CalculateContamination_tmr_only:
+rule calculate_contamination_tmr_only:
 	wildcard_constraints:
 		patient="|".join(ONLY_TMR_PATIENTS)
 	input: 
@@ -161,7 +161,7 @@ rule CalculateContamination_tmr_only:
 				-I {input.getpileupsum_tmr} \
 				-O {output.contamination} 2>{log}"""
 
-rule FilterMutectCalls:
+rule filter_mutect_calls_grm_vs_tmr:
 	wildcard_constraints:
 		patient="|".join(GRM_VS_TMR_PATIENTS)
 	input: 
@@ -183,13 +183,13 @@ rule FilterMutectCalls:
 				--orientation-bias-artifact-priors {input.rom} 2>{log}
 				"""
 
-use rule FilterMutectCalls as FilterMutectCalls_tmr_only with:
+use rule filter_mutect_calls_grm_vs_tmr as filter_mutect_calls_tmr_only with:
 	wildcard_constraints:
 		patient="|".join(ONLY_TMR_PATIENTS)
 	output:
 		vcf_filt='results/{run}/somatic/{patient}/final.vcf.gz'
 
-rule FilterPASS_exclude_normal:
+rule filter_pass_exclude_normal:
 	wildcard_constraints:
 		patient="|".join(GRM_VS_TMR_PATIENTS)
 	input: 

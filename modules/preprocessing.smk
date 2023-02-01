@@ -1,11 +1,11 @@
-rule sort_bam:
+rule sorting_bam:
 	input: "results/{run}/bam/{sample}.raw.bam"
 	output: "results/{run}/bam/{sample}.sorted.bam"
 	threads: workflow.cores/len(SAMPLES)
 	params: samtools=config['tools']['samtools']
 	shell: '{params.samtools} sort -@ {threads} -o {output} {input}'
 
-rule dedup:
+rule mark_duplicates:
 	input: "results/{run}/bam/{sample}.sorted.bam"
 	output: "results/{run}/bam/{sample}.dedup.bam"
 	log: 
@@ -15,13 +15,13 @@ rule dedup:
 				-I {input} -O {output} -M {log.log1} 2>{log.log2}\
 				--ASSUME_SORTED true"""
 
-rule index_dedup:
+rule index_deduplicated_bam:
 	input: "results/{run}/bam/{sample}.dedup.bam"
 	output: "results/{run}/bam/{sample}.dedup.bam.bai"
 	params: samtools=config['tools']['samtools']
 	shell: '{params.samtools} index {input}'
 
-rule prep_bqsr:
+rule prepare_bqsr:
 	input: 
 		bam="results/{run}/bam/{sample}.dedup.bam",
 		bai="results/{run}/bam/{sample}.dedup.bam.bai"
@@ -57,7 +57,7 @@ rule apply_bqsr:
 				-bqsr {input.bqsr} \
 				-O {output} &>{log}"""
 
-rule BedToIntervalList:
+rule bed_to_intervals:
 	input: config["panel_capture"]["target"]
 	output: "results/{run}/capture.intervals"
 	params:

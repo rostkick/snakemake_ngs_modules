@@ -1,4 +1,4 @@
-rule align:
+rule read_alignment:
 	input: 
 		fr = lambda wc: ngs.long_df.loc[ngs.long_df.loc[:, 'samples']==wc.sample, 'fastq_forward'].values[0],
 		rr = lambda wc: ngs.long_df.loc[ngs.long_df.loc[:, 'samples']==wc.sample, 'fastq_reverse'].values[0]

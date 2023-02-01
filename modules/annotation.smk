@@ -53,14 +53,6 @@ use rule vep_germline as vep_somatic with:
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 
-use rule vep_germline as vep_somatic_tmr_only with:
-	input: 
-		'results/{run}/somatic/{patient}/final.tmr_only.vcf.gz'
-	output:
-		'results/{run}/somatic/{patient}/annotated.tmr_only.vcf.gz'
-	log: 
-		'results/{run}/logs/somatic/{patient}/annotation.tmr_only.log'
-
 use rule vep_germline as vep_sv_germline with:
 	input: 
 		'results/{run}/germline/sv/results/variants/diploidSV.inv_converted.vcf.gz'

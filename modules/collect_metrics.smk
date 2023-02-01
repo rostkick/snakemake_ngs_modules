@@ -13,7 +13,3 @@ rule CalculateHsMetrics:
 				BAIT_INTERVALS={input.intervals} \
 				TARGET_INTERVALS={input.intervals} \
 				NEAR_DISTANCE=0 2>{log}"""
-
-rule hs_metrics_status:
-	input: "results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv"
-	output: touch("results/{run}/bam/hs_metrics/{sample}.metrics_status")
