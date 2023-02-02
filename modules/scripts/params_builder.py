@@ -4,7 +4,7 @@ from glob import glob
 from abc import ABCMeta, abstractmethod
 import pandas as pd
 import numpy as np
-from itertools import product
+from itertools import chain, product
 from difflib import SequenceMatcher
 from dataclasses import dataclass
 from snakemake.workflow import config
@@ -21,7 +21,7 @@ class SeqDir:
 		return os.path.abspath(dir_path)
 
 	def get_seq_list(self, dir_path: str) -> list:
-		return glob(dir_path+'/*.fastq.gz')
+		return list(chain(*[glob(dir_path + '/' + ext) for ext in ['*.fastq', '*.fastq.gz', '*.fq', '*.fq.gz']]))
 
 class DataProcessor(metaclass=ABCMeta):
 	@abstractmethod
