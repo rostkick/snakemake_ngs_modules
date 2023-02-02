@@ -41,9 +41,12 @@ def final_inputs():
 rule all:
 	input: final_inputs()
 
-include: config["snakemake_modules"] + "aligning.smk"
-include: config["snakemake_modules"] + "preprocessing.smk"
-include: config["snakemake_modules"] + "collect_metrics.smk"
-include: config["snakemake_modules"] + "germline_calling.deepvariant.smk"
-include: config["snakemake_modules"] + "somatic_calling.smk"
-include: config["snakemake_modules"] + "annotation.smk"
+include: config["snakemake_modules"] + "rules_1.aligning.smk"
+include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
+include: config["snakemake_modules"] + "rules_3.collect_metrics.smk"
+include: config["snakemake_modules"] + "rules_4.germline_calling.deepvariant.smk"
+include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
+include: config["snakemake_modules"] + "rules_6.somatic_calling.grm_vs_tmr.smk"
+include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
+include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
+include: config["snakemake_modules"] + "rules_9.annotation.smk"
