@@ -6,8 +6,8 @@ rule mutect2_tumor_only:
 		bam_tmr=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor'],
 		capture="results/{run}/capture.intervals"
 	output: 
-		vcf_raw='results/{run}/somatic/{patient}/raw.vcf.gz',
-		bam='results/{run}/somatic/{patient}/raw.bam'
+		vcf_raw=temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
+		bam=temp('results/{run}/somatic/{patient}/raw.bam')
 	log: 
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
@@ -29,7 +29,7 @@ rule calculate_contamination_tmr_only:
 	input: 
 		getpileupsum_tmr='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table'
 	output: 
-		contamination='results/{run}/somatic/{patient}/contamination.table'
+		contamination=temp('results/{run}/somatic/{patient}/contamination.table')
 	log: 
 		'results/{run}/logs/somatic/{patient}/CalculateContamination.log'
 	shell: 
@@ -42,4 +42,4 @@ use rule filter_mutect_calls_grm_vs_tmr as filter_mutect_calls_tmr_only with:
 	wildcard_constraints:
 		patient="|".join(ONLY_TMR_PATIENTS)
 	output:
-		vcf_filt='results/{run}/somatic/{patient}/final.vcf.gz'
+		vcf_filt=temp('results/{run}/somatic/{patient}/final.vcf.gz')

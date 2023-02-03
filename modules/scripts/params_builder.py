@@ -83,7 +83,7 @@ class DataProcessorPaired(DataProcessorSingle):
 	def extract_paired_reads(self, fastq: list) -> list:
 		fastq_f = [fq for fq in fastq if re.match('.*_R1_.*', fq) is not None]
 		fastq_r = [fq for fq in fastq if re.match('.*_R2_.*', fq) is not None]
-		return fastq_f, fastq_r
+		return sorted(fastq_f), sorted(fastq_r)
 
 	def convert_to_df(self, sample: pd.Series, fastq_f: list, fastq_r: list) -> pd.DataFrame:
 		df = pd.DataFrame()

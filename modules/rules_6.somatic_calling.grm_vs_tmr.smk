@@ -6,8 +6,8 @@ rule mutect2_grm_vs_tmr:
 		bam_grm=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline'],
 		capture="results/{run}/capture.intervals"
 	output: 
-		vcf_raw='results/{run}/somatic/{patient}/raw.vcf.gz',
-		bam='results/{run}/somatic/{patient}/raw.bam'
+		vcf_raw=temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
+		bam=temp('results/{run}/somatic/{patient}/raw.bam')
 	log: 
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
@@ -32,7 +32,7 @@ use rule get_pileup_summaries_tmr as get_pileup_summaries_grm with:
 	input: 
 		bam=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
 	output: 
-		getpileupsum='results/{run}/somatic/{patient}/getpileupsummaries_grm.table'
+		getpileupsum=temp('results/{run}/somatic/{patient}/getpileupsummaries_grm.table')
 	log: 
 		'results/{run}/logs/somatic/{patient}/GetPileupSummaries_germline.log'
 
@@ -44,7 +44,7 @@ rule calculate_contamination_grm_vs_tmr:
 		getpileupsum_tmr='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table',
 		getpileupsum_grm='results/{run}/somatic/{patient}/getpileupsummaries_grm.table'
 	output: 
-		contamination='results/{run}/somatic/{patient}/contamination.table'
+		contamination=temp('results/{run}/somatic/{patient}/contamination.table')
 	log: 
 		'results/{run}/logs/somatic/{patient}/CalculateContamination.log'
 	shell: 
@@ -61,7 +61,7 @@ rule filter_mutect_calls_grm_vs_tmr:
 		contamination='results/{run}/somatic/{patient}/contamination.table',
 		rom='results/{run}/somatic/{patient}/read-orientation-model.tar.gz'
 	output: 
-		vcf_filt='results/{run}/somatic/{patient}/filtered.vcf.gz'
+		vcf_filt=temp('results/{run}/somatic/{patient}/filtered.vcf.gz')
 	log: 
 		'results/{run}/logs/somatic/{patient}/FilterMutectCalls.log'
 	params:
@@ -81,7 +81,7 @@ rule filter_pass_exclude_normal_grm_vs_tmr:
 	input: 
 		vcf_filt='results/{run}/somatic/{patient}/filtered.vcf.gz'
 	output: 
-		vcf_final='results/{run}/somatic/{patient}/final.vcf.gz'
+		vcf_final=temp('results/{run}/somatic/{patient}/final.vcf.gz')
 	params: 
 		bcftools=config['tools']['bcftools']
 	threads: 

@@ -4,6 +4,7 @@ def get_somatic_input(wc, data):
 	return {'tumor': f'results/{wc.run}/bam/{sample_tumor}.final.bam',
 			'germline': f'results/{wc.run}/bam/{sample_germline}.final.bam'}
 
+# here specifies the priority of germline-tumor runs vs tmr-only when both types of samples exist 
 ruleorder: mutect2_grm_vs_tmr > mutect2_tumor_only
 ruleorder: calculate_contamination_grm_vs_tmr > calculate_contamination_tmr_only
 ruleorder: filter_pass_exclude_normal_grm_vs_tmr > filter_mutect_calls_tmr_only
@@ -15,7 +16,7 @@ rule collect_fir2_counts:
 	input: 
 		bam_tmr=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 
-		f1r2='results/{run}/somatic/{patient}/f1r2.tsv'
+		f1r2=temp('results/{run}/somatic/{patient}/f1r2.tsv')
 	log: 
 		'results/{run}/logs/somatic/{patient}/CollectF1R2Counts.log'
 	params:
@@ -33,7 +34,7 @@ rule learn_read_orientation_model:
 	input: 
 		f1r2='results/{run}/somatic/{patient}/f1r2.tsv'
 	output: 
-		rom='results/{run}/somatic/{patient}/read-orientation-model.tar.gz'
+		rom=temp('results/{run}/somatic/{patient}/read-orientation-model.tar.gz')
 	log: 
 		'results/{run}/logs/somatic/{patient}/LearnReadOrientationModel.log'
 	shell: 
@@ -47,7 +48,7 @@ rule get_pileup_summaries_tmr:
 	input: 
 		bam=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 
-		getpileupsum='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table'
+		getpileupsum=temp('results/{run}/somatic/{patient}/getpileupsummaries_tmr.table')
 	log: 
 		'results/{run}/logs/somatic/{patient}/GetPileupSummaries_tumor.log'
 	params: 

@@ -1,13 +1,13 @@
 rule sorting_bam:
 	input: "results/{run}/bam/{sample}.raw.bam"
-	output: "results/{run}/bam/{sample}.sorted.bam"
+	output: temp("results/{run}/bam/{sample}.sorted.bam")
 	threads: workflow.cores/len(SAMPLES)
 	params: samtools=config['tools']['samtools']
 	shell: '{params.samtools} sort -@ {threads} -o {output} {input}'
 
 rule mark_duplicates:
 	input: "results/{run}/bam/{sample}.sorted.bam"
-	output: "results/{run}/bam/{sample}.dedup.bam"
+	output: temp("results/{run}/bam/{sample}.dedup.bam")
 	log: 
 		log1='results/{run}/logs/prep/{sample}.dedup.log1',
 		log2='results/{run}/logs/prep/{sample}.dedup.log2'
@@ -17,7 +17,7 @@ rule mark_duplicates:
 
 rule index_deduplicated_bam:
 	input: "results/{run}/bam/{sample}.dedup.bam"
-	output: "results/{run}/bam/{sample}.dedup.bam.bai"
+	output: temp("results/{run}/bam/{sample}.dedup.bam.bai")
 	params: samtools=config['tools']['samtools']
 	shell: '{params.samtools} index {input}'
 
@@ -25,7 +25,7 @@ rule prepare_bqsr:
 	input: 
 		bam="results/{run}/bam/{sample}.dedup.bam",
 		bai="results/{run}/bam/{sample}.dedup.bam.bai"
-	output: 'results/{run}/bam/{sample}.bqsr.recal.table'
+	output: temp('results/{run}/bam/{sample}.bqsr.recal.table')
 	log: 'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params: 
 		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],

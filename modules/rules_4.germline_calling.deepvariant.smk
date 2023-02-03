@@ -1,8 +1,8 @@
 rule deepvariant:
 	input: 'results/{run}/bam/{sample}.final.bam'
 	output: 
-		vcf="results/{run}/germline/vcf/{sample}.vcf.gz",
-		gvcf="results/{run}/germline/vcf/{sample}.gvcf.gz"
+		vcf=temp("results/{run}/germline/vcf/{sample}.vcf.gz"),
+		gvcf=temp("results/{run}/germline/vcf/{sample}.gvcf.gz")
 	log: 'results/{run}/logs/germline_calling/{sample}.deepvariant.log'
 	params: 
 		deepvariant=config['tools']['deepvariant'],
@@ -22,12 +22,12 @@ rule deepvariant:
 
 rule make_gvcf_list:
 	input: expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=GRM_SAMPLES)
-	output: "results/{run}/germline/vcf/gvcfs.list"
+	output: temp("results/{run}/germline/vcf/gvcfs.list")
 	shell: "echo {input} | sed 's/\\s/\\n/g' > {output}"
 
 rule merge_glnexus:
 	input: "results/{run}/germline/vcf/gvcfs.list"
-	output: "results/{run}/germline/vcf/cohort.vcf.gz"
+	output: temp("results/{run}/germline/vcf/cohort.vcf.gz")
 	log: 'results/{run}/logs/germline_calling/glnexus.log'
 	params:
 		glnexus_cli=config['tools']['glnexus_cli'],
