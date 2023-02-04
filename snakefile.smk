@@ -23,9 +23,12 @@ wildcard_constraints:
 	patient="|".join(ALL_PATIENTS)
 
 def final_inputs():
+	germline_inputs, somatic_inputs, metrics = [], [], []
+
 	# germline
-	germline_inputs = [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]] + \
-					[f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], GRM_SAMPLES)]
+	germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], GRM_SAMPLES)]
+	if GRM_SAMPLES > 1:
+		germline_inputs = germline_inputs + [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 	# somatic
 	somatic_inputs = [f'results/{run}/somatic/{patient}/annotated.vcf.gz' for run, patient in product([config['run']], ALL_PATIENTS)]
 	# metrics
