@@ -16,7 +16,7 @@ rule collect_fir2_counts:
 	input: 
 		bam_tmr=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 
-		f1r2=temp('results/{run}/somatic/{patient}/f1r2.tsv')
+		f1r2='results/{run}/somatic/{patient}/f1r2.tsv'
 	log: 
 		'results/{run}/logs/somatic/{patient}/CollectF1R2Counts.log'
 	params:
@@ -48,7 +48,7 @@ rule get_pileup_summaries_tmr:
 	input: 
 		bam=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor']
 	output: 
-		getpileupsum=temp('results/{run}/somatic/{patient}/getpileupsummaries_tmr.table')
+		getpileupsum='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table'
 	log: 
 		'results/{run}/logs/somatic/{patient}/GetPileupSummaries_tumor.log'
 	params: 

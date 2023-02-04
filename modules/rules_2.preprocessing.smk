@@ -17,7 +17,7 @@ rule mark_duplicates:
 
 rule index_deduplicated_bam:
 	input: "results/{run}/bam/{sample}.dedup.bam"
-	output: temp("results/{run}/bam/{sample}.dedup.bam.bai")
+	output: "results/{run}/bam/{sample}.dedup.bam.bai"
 	params: samtools=config['tools']['samtools']
 	shell: '{params.samtools} index {input}'
 
@@ -43,6 +43,7 @@ rule prepare_bqsr:
 rule apply_bqsr:
 	input: 
 		bam="results/{run}/bam/{sample}.dedup.bam",
+		bai="results/{run}/bam/{sample}.dedup.bam.bai",
 		bqsr='results/{run}/bam/{sample}.bqsr.recal.table'
 	output: "results/{run}/bam/{sample}.final.bam"
 	log: 'results/{run}/logs/prep/{sample}.bqsr_apply.log'

@@ -44,7 +44,7 @@ rule calculate_contamination_grm_vs_tmr:
 		getpileupsum_tmr='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table',
 		getpileupsum_grm='results/{run}/somatic/{patient}/getpileupsummaries_grm.table'
 	output: 
-		contamination=temp('results/{run}/somatic/{patient}/contamination.table')
+		contamination='results/{run}/somatic/{patient}/contamination.table'
 	log: 
 		'results/{run}/logs/somatic/{patient}/CalculateContamination.log'
 	shell: 
@@ -61,7 +61,7 @@ rule filter_mutect_calls_grm_vs_tmr:
 		contamination='results/{run}/somatic/{patient}/contamination.table',
 		rom='results/{run}/somatic/{patient}/read-orientation-model.tar.gz'
 	output: 
-		vcf_filt=temp('results/{run}/somatic/{patient}/filtered.vcf.gz')
+		vcf_filt='results/{run}/somatic/{patient}/filtered.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/FilterMutectCalls.log'
 	params:
@@ -81,7 +81,7 @@ rule filter_pass_exclude_normal_grm_vs_tmr:
 	input: 
 		vcf_filt='results/{run}/somatic/{patient}/filtered.vcf.gz'
 	output: 
-		vcf_final=temp('results/{run}/somatic/{patient}/final.vcf.gz')
+		vcf_final='results/{run}/somatic/{patient}/final.vcf.gz'
 	params: 
 		bcftools=config['tools']['bcftools']
 	threads: 
