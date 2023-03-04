@@ -27,7 +27,8 @@ def final_inputs():
 
 	# germline
 	germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], GRM_SAMPLES)]
-	if GRM_SAMPLES > 1:
+	print(GRM_SAMPLES)
+	if len(GRM_SAMPLES) > 1:
 		germline_inputs = germline_inputs + [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 	# somatic
 	somatic_inputs = [f'results/{run}/somatic/{patient}/annotated.vcf.gz' for run, patient in product([config['run']], ALL_PATIENTS)]
