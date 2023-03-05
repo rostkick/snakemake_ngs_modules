@@ -1,46 +1,46 @@
-import sys
 from itertools import product
-
-from modules.scripts.params_builder import NGSSetup
-
-
-ngs_setup = NGSSetup()
-ngs = ngs_setup.create_params()
-
-ngs.wide_df.to_csv('wide_params.tsv', sep='\t')
-ngs.long_df.to_csv('long_params.tsv', sep='\t')
-
-ALL_PATIENTS = ngs.wide_df[~ngs.wide_df['tmr_samples'].isnull()]['patients'].to_list()
-ONLY_TMR_PATIENTS = ngs.wide_df[ngs.wide_df['grm_samples'].isnull()]['patients'].to_list()
-GRM_VS_TMR_PATIENTS = ngs.wide_df.query("~(tmr_samples.isnull() | grm_samples.isnull())")['patients'].to_list()
-SAMPLES = ngs.long_df.loc[:, "samples"].tolist()
-GRM_SAMPLES = ngs.wide_df.loc[:, "grm_samples"].dropna().tolist()
-TMR_SAMPLES = ngs.wide_df.loc[:, "tmr_samples"].dropna().tolist()
+from modules.scripts.setup_run import setup_run
 
 
-wildcard_constraints:
-	sample="|".join(SAMPLES),
-	patient="|".join(ALL_PATIENTS)
+configfile: 'configure.yml'
+
+mapping, long_df = setup_run()
+
+SAMPLES = long_df['sample'].unique().tolist()
+LANES = long_df['lane'].unique().tolist()
+
+GRM_SAMPLES = mapping['sample_grm'].dropna().tolist()
+TMR_SAMPLES = mapping['sample_tmr'].dropna().tolist()
+ALL_PATIENTS = {i[:-4] for i in TMR_SAMPLES}
+GRM_VS_TMR_PATIENTS = mapping.query("~(sample_tmr.isnull() | sample_grm.isnull())")['patient'].to_list()
+ONLY_TMR_PATIENTS =  mapping.query("sample_grm.isnull()")['patient'].to_list()
+
+GRM=config['grm_dir'] != ''
+TMR=config['tmr_dir'] != ''
+PAIR=config['reads_type'] == 'pair'
 
 def final_inputs():
 	germline_inputs, somatic_inputs, metrics = [], [], []
 
 	# germline
 	germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], GRM_SAMPLES)]
-	print(GRM_SAMPLES)
 	if len(GRM_SAMPLES) > 1:
 		germline_inputs = germline_inputs + [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 	# somatic
 	somatic_inputs = [f'results/{run}/somatic/{patient}/annotated.vcf.gz' for run, patient in product([config['run']], ALL_PATIENTS)]
 	# metrics
 	metrics = [f"results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv" for run, sample in product([config['run']], SAMPLES)]
-	if ngs_setup.GRM and ngs_setup.TMR is False:
+
+	if GRM and TMR is False:
 		return germline_inputs + metrics
-	elif ngs_setup.GRM is False and ngs_setup.TMR:
+	elif GRM is False and TMR:
 		return somatic_inputs + metrics
-	elif ngs_setup.GRM and ngs_setup.TMR:
+	elif GRM and TMR:
 		return germline_inputs + somatic_inputs + metrics
 
+wildcard_constraints:
+	sample="|".join(SAMPLES),
+	patient="|".join(ALL_PATIENTS)
 
 rule all:
 	input: final_inputs()
@@ -52,5 +52,5 @@ include: config["snakemake_modules"] + "rules_4.germline_calling.deepvariant.smk
 include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
 include: config["snakemake_modules"] + "rules_6.somatic_calling.grm_vs_tmr.smk"
 include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
-include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
+# include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
 include: config["snakemake_modules"] + "rules_9.annotation.smk"

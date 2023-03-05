@@ -1,8 +1,8 @@
-grm_dir: 'data/germline_dir'
-tmr_dir: 'data/tumor_dir'
+grm_dir: 'data/germline_several_lanes'
+tmr_dir: 'data/tumor_several_lanes'
 
 run: 'bla'
-analysis_type: 'germline_and_somatic'
+analysis_type: 'germline'
 reads_type: 'pair'
 
 assembly: 'GRCh38'
@@ -33,7 +33,9 @@ references38:
   small_exac_common: "/mnt/archive/shared/references/GRCh38/somatic-hg38/small_exac_common_3.hg38.vcf.gz"
 
 tools:
+  singularity: "/usr/local/bin/singularity"
   samtools: "/usr/bin/samtools"
+  gatk: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/smk/bin/gatk"
   bwa_mem2: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/bwa-mem2"
   picard_old: "/nfs/home/rskitchenko/picard-tools-2.0.1/picard.jar"
   configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"

@@ -1,104 +1,98 @@
-rule mutect2_grm_vs_tmr:
+rule r6_mutect2_grm_vs_tmr:
 	wildcard_constraints:
-		patient="|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(GRM_VS_TMR_PATIENTS)
 	input: 
-		bam_tmr=lambda wc: get_somatic_input(wc, ngs.wide_df)['tumor'],
-		bam_grm=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline'],
-		capture="results/{run}/capture.intervals"
+		bam_tmr = lambda wc: get_somatic_input(wc, mapping)['tumor'],
+		bam_grm = lambda wc: get_somatic_input(wc, mapping)['germline'],
+		capture = rules.r2_bed_to_intervals.output.intervals
 	output: 
-		vcf_raw=temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
-		bam=temp('results/{run}/somatic/{patient}/raw.bam')
+		vcf = temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
+		bam = temp('results/{run}/somatic/{patient}/raw.bam')
 	log: 
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
-		sample_name=lambda wc: ngs.wide_df.loc[:, 'grm_samples'][ngs.wide_df.loc[:, 'patients']==wc.patient].values[0],
-		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		grm_res=config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
-		pon=config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
+		gatk = config['tools']['gatk'],
+		sample_name = lambda wc: mapping.loc[:, 'sample_grm'][mapping.loc[:, 'patient']==wc.patient].values[0],
+		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		grm_res = config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
+		pon = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
 	shell:
-		"""gatk Mutect2 \
+		"""{params.gatk} Mutect2 \
 				-R {params.ref} \
 				-I {input.bam_tmr} \
-				-O {output.vcf_raw} \
+				-O {output.vcf} \
 				-I {input.bam_grm} \
 				-normal {params.sample_name} \
 				-bamout {output.bam} \
 				--germline-resource {params.grm_res} \
 				--panel-of-normals {params.pon} 2>{log}"""
 
-use rule get_pileup_summaries_tmr as get_pileup_summaries_grm with:
+use rule r5_get_pileup_summaries_tmr as r6_get_pileup_summaries_grm with:
 	wildcard_constraints:
-		patient="|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(GRM_VS_TMR_PATIENTS)
 	input: 
-		bam=lambda wc: get_somatic_input(wc, ngs.wide_df)['germline']
+		bam = lambda wc: get_somatic_input(wc, mapping)['germline']
 	output: 
-		getpileupsum=temp('results/{run}/somatic/{patient}/getpileupsummaries_grm.table')
+		getpileupsum = temp('results/{run}/somatic/{patient}/getpileupsummaries_grm.table')
 	log: 
 		'results/{run}/logs/somatic/{patient}/GetPileupSummaries_germline.log'
 
 
-rule calculate_contamination_grm_vs_tmr:
+rule r6_calculate_contamination_grm_vs_tmr:
 	wildcard_constraints:
-		patient="|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(GRM_VS_TMR_PATIENTS)
 	input: 
-		getpileupsum_tmr='results/{run}/somatic/{patient}/getpileupsummaries_tmr.table',
-		getpileupsum_grm='results/{run}/somatic/{patient}/getpileupsummaries_grm.table'
+		getpileupsum_tmr = rules.r5_get_pileup_summaries_tmr.output.getpileupsum,
+		getpileupsum_grm = rules.r6_get_pileup_summaries_grm.output.getpileupsum
 	output: 
-		contamination='results/{run}/somatic/{patient}/contamination.table'
+		contamination = 'results/{run}/somatic/{patient}/contamination.table'
+	params:
+		gatk = config['tools']['gatk']
 	log: 
 		'results/{run}/logs/somatic/{patient}/CalculateContamination.log'
-	shell: 
-		"""gatk CalculateContamination \
+	shell:"""
+		{params.gatk} CalculateContamination \
 				-I {input.getpileupsum_tmr} \
 				-O {output.contamination} \
 				-matched {input.getpileupsum_grm} 2>{log}"""
 
-rule filter_mutect_calls_grm_vs_tmr:
+rule r6_filter_mutect_calls_grm_vs_tmr:
 	wildcard_constraints:
-		patient="|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(GRM_VS_TMR_PATIENTS)
 	input: 
-		vcf_raw='results/{run}/somatic/{patient}/raw.vcf.gz',
-		contamination='results/{run}/somatic/{patient}/contamination.table',
-		rom='results/{run}/somatic/{patient}/read-orientation-model.tar.gz'
+		vcf = rules.r6_mutect2_grm_vs_tmr.output.vcf,
+		contamination = rules.r6_calculate_contamination_grm_vs_tmr.output.contamination,
+		rom = rules.r5_learn_read_orientation_model.output.rom
 	output: 
-		vcf_filt='results/{run}/somatic/{patient}/filtered.vcf.gz'
+		vcf = 'results/{run}/somatic/{patient}/filtered.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/FilterMutectCalls.log'
 	params:
-		ref=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
-	shell: 
-		"""gatk FilterMutectCalls \
+		gatk = config['tools']['gatk'],
+		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
+	shell:"""
+			{params.gatk} FilterMutectCalls \
 				-R {params.ref} \
-				-V {input.vcf_raw} \
-				-O {output.vcf_filt} \
+				-V {input.vcf} \
+				-O {output.vcf} \
 				--contamination-table {input.contamination} \
 				--orientation-bias-artifact-priors {input.rom} 2>{log}
 				"""
 
-rule filter_pass_exclude_normal_grm_vs_tmr:
+rule r6_filter_pass_exclude_normal_grm_vs_tmr:
 	wildcard_constraints:
-		patient="|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(GRM_VS_TMR_PATIENTS)
 	input: 
-		vcf_filt='results/{run}/somatic/{patient}/filtered.vcf.gz'
+		vcf = rules.r6_filter_mutect_calls_grm_vs_tmr.output.vcf
 	output: 
-		vcf_final='results/{run}/somatic/{patient}/final.vcf.gz'
+		vcf = 'results/{run}/somatic/{patient}/final.vcf.gz'
 	params: 
-		bcftools=config['tools']['bcftools']
+		bcftools = config['tools']['bcftools']
 	threads: 
-		workflow.cores/8
-	shell: 
-		"""tumor_sample=$(zcat {input.vcf_filt} | \
+		workflow.cores/len(GRM_VS_TMR_PATIENTS)
+	shell:"""
+			tumor_sample=$(zcat {input.vcf} | \
 					grep -oP '##tumor_sample=\K.+') &&\
 					{params.bcftools} view -i "%FILTER='PASS'" \
 					-s $tumor_sample -t {threads} \
-					-Oz -o {output.vcf_final} {input.vcf_filt}"""
-
-rule generate_somatic_plots:
-	input: 
-		'results/{run}/somatic/{patient}/filtered.pass.vcf.gz'
-	output: 
-		'results/{run}/somatic/{patient}/plots/plot.pdf'
-	log: 
-		'results/{run}/logs/somatic/{patient}/plotting.log'
-	script: 
-		"scripts/somatic_plots.R"
+					-Oz -o {output.vcf} {input.vcf}"""
