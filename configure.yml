@@ -1,7 +1,7 @@
-grm_dir: 'data/germline_several_lanes'
-# grm_dir: ''
-# tmr_dir: 'data/tumor_several_lanes'
-tmr_dir: ""
+# grm_dir: 'data/germline_several_lanes'
+grm_dir: ''
+tmr_dir: 'data/tumor_several_lanes'
+# tmr_dir: ""
 
 run: 'bla'
 reads_type: 'pair'

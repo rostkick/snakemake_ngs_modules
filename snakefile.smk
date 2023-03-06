@@ -1,5 +1,6 @@
 from itertools import product
 from modules.scripts.params_builder import *
+from pprint import pprint
 
 configfile: 'configure.yml'
 
@@ -31,12 +32,12 @@ wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
 	patient = "|".join(ngs.ALL_PATIENTS)
 
-print(ngs.__dict__)
+pprint(ngs.__dict__)
 rule all:
 	# input: final_inputs()
 	# input:  [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], ngs.GRM_SAMPLES)]
-	input: expand("results/{run}/germline/vcf/{sample}.annotated.vcf.gz", run=config['run'], sample=ngs.GRM_SAMPLES),
-			 [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
+	input: expand('results/{run}/somatic/{patient}/final.vcf.gz', run=config['run'], patient=ngs.ONLY_TMR_PATIENTS),
+	# 		 [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 	# input: 
 
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
@@ -46,5 +47,5 @@ include: config["snakemake_modules"] + "rules_4.germline_calling.deepvariant.smk
 include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
 include: config["snakemake_modules"] + "rules_6.somatic_calling.grm_vs_tmr.smk"
 include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
-include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
-include: config["snakemake_modules"] + "rules_9.annotation.smk"
+# include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
+# include: config["snakemake_modules"] + "rules_9.annotation.smk"

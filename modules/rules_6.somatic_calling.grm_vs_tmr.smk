@@ -1,32 +1,4 @@
-rule r6_mutect2_grm_vs_tmr:
-	wildcard_constraints:
-		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
-	input: 
-		bam_tmr = lambda wc: get_somatic_input(wc, mapping)['tumor'],
-		bam_grm = lambda wc: get_somatic_input(wc, mapping)['germline'],
-		capture = rules.r2_bed_to_intervals.output.intervals
-	output: 
-		vcf = temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
-		bam = temp('results/{run}/somatic/{patient}/raw.bam')
-	log: 
-		'results/{run}/logs/somatic/{patient}/Mutect2.log'
-	params:
-		gatk = config['tools']['gatk'],
-		sample_name = lambda wc: mapping.loc[:, 'sample_grm'][mapping.loc[:, 'patient']==wc.patient].values[0],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		grm_res = config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
-		pon = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
-	shell:
-		"""{params.gatk} Mutect2 \
-				-R {params.ref} \
-				-I {input.bam_tmr} \
-				-O {output.vcf} \
-				-I {input.bam_grm} \
-				-normal {params.sample_name} \
-				-bamout {output.bam} \
-				--germline-resource {params.grm_res} \
-				--panel-of-normals {params.pon} 2>{log}"""
-
+÷
 use rule r5_get_pileup_summaries_tmr as r6_get_pileup_summaries_grm with:
 	wildcard_constraints:
 		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)

@@ -211,8 +211,8 @@ class Tumor:
 		self.SAMPLES = data['sample'].dropna().unique().tolist()
 		self.TMR_SAMPLES = [i for i in self.SAMPLES if '_tmr' in i]
 		self.TMR_SAMPLES = self.SAMPLES if len(self.TMR_SAMPLES) == 0 else self.TMR_SAMPLES
-		# self.ALL_PATIENTS = {i[:-4] for i in self.TMR_SAMPLES if i is not np.nan} if '_tmr' in self.TMR_SAMPLES else self.TMR_SAMPLES
 		self.ALL_PATIENTS = self.TMR_SAMPLES.copy()
+		self.ONLY_TMR_PATIENTS = self.TMR_SAMPLES.copy()
 
 class GermlineAndTumor:
 	def __init__(self, mapping: pd.DataFrame):
