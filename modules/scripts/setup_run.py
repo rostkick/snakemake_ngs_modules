@@ -27,6 +27,7 @@ def get_fqs_table(dir_path, suffix):
 	fqs = list(glob(dir_path+'/*fq.gz'))
 	df = pd.DataFrame({'fastq': fqs})
 	df['base_fastq'] = df['fastq'].apply(lambda x: os.path.basename(x))
+	print(df)
 	df_extracted = df['base_fastq'].str.extractall(r'(?P<sample>.*)[_\-\.](?P<lane>[lL]\d*)[_\-\.](?P<reads_orientation>[Rr][12])[_\-\.]?.*?').droplevel(1)
 	df = pd.concat([df, df_extracted], axis=1)
 	df = df.drop('base_fastq', axis=1)
