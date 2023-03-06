@@ -1,6 +1,6 @@
 rule r9_vep_germline:
 	wildcard_constraints: 
-		sample = "|".join(GRM_SAMPLES)
+		sample = "|".join(ngs.GRM_SAMPLES)
 	input: 
 		vcf = rules.r4_deepvariant.output.vcf
 	output: 
@@ -53,7 +53,7 @@ use rule r9_vep_germline as r9_vep_germline_joint with:
 
 use rule r9_vep_germline as r9_vep_somatic with:
 	input: 
-		vcf = rules.r6_filter_pass_exclude_normal_grm_vs_tmr.output.vcf
+		vcf = rules.r6_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if ngs.GRM & ngs.TMR else rules.r7_filter_mutect_calls_tmr_only.output.vcf
 	output:
 		vcf = 'results/{run}/somatic/{patient}/annotated.vcf.gz'
 	log: 

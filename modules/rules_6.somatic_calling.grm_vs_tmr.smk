@@ -1,6 +1,6 @@
 rule r6_mutect2_grm_vs_tmr:
 	wildcard_constraints:
-		patient = "|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
 		bam_tmr = lambda wc: get_somatic_input(wc, mapping)['tumor'],
 		bam_grm = lambda wc: get_somatic_input(wc, mapping)['germline'],
@@ -29,7 +29,7 @@ rule r6_mutect2_grm_vs_tmr:
 
 use rule r5_get_pileup_summaries_tmr as r6_get_pileup_summaries_grm with:
 	wildcard_constraints:
-		patient = "|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
 		bam = lambda wc: get_somatic_input(wc, mapping)['germline']
 	output: 
@@ -40,7 +40,7 @@ use rule r5_get_pileup_summaries_tmr as r6_get_pileup_summaries_grm with:
 
 rule r6_calculate_contamination_grm_vs_tmr:
 	wildcard_constraints:
-		patient = "|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
 		getpileupsum_tmr = rules.r5_get_pileup_summaries_tmr.output.getpileupsum,
 		getpileupsum_grm = rules.r6_get_pileup_summaries_grm.output.getpileupsum
@@ -58,7 +58,7 @@ rule r6_calculate_contamination_grm_vs_tmr:
 
 rule r6_filter_mutect_calls_grm_vs_tmr:
 	wildcard_constraints:
-		patient = "|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
 		vcf = rules.r6_mutect2_grm_vs_tmr.output.vcf,
 		contamination = rules.r6_calculate_contamination_grm_vs_tmr.output.contamination,
@@ -81,7 +81,7 @@ rule r6_filter_mutect_calls_grm_vs_tmr:
 
 rule r6_filter_pass_exclude_normal_grm_vs_tmr:
 	wildcard_constraints:
-		patient = "|".join(GRM_VS_TMR_PATIENTS)
+		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
 		vcf = rules.r6_filter_mutect_calls_grm_vs_tmr.output.vcf
 	output: 
@@ -89,7 +89,7 @@ rule r6_filter_pass_exclude_normal_grm_vs_tmr:
 	params: 
 		bcftools = config['tools']['bcftools']
 	threads: 
-		workflow.cores/len(GRM_VS_TMR_PATIENTS)
+		workflow.cores/max(len(ngs.GRM_VS_TMR_PATIENTS), 1)
 	shell:"""
 			tumor_sample=$(zcat {input.vcf} | \
 					grep -oP '##tumor_sample=\K.+') &&\

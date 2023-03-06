@@ -1,13 +1,20 @@
+from collections import defaultdict
+
+
 def get_somatic_input(wc, data):
+	inp = defaultdict(str)
 	sample_tumor = data.loc[:, 'sample_tmr'][data['patient']==wc.patient].values[0]
-	sample_germline = data.loc[:, 'sample_grm'][data.loc[:, 'patient']==wc.patient].values[0]
-	return {'tumor': f'results/{wc.run}/bam/{sample_tumor}.final.bam',
-			'germline': f'results/{wc.run}/bam/{sample_germline}.final.bam'}
+	inp['tumor'] = f'results/{wc.run}/bam/{sample_tumor}.final.bam'
+
+	if ngs.GRM:
+		sample_germline = data.loc[:, 'sample_grm'][data.loc[:, 'patient']==wc.patient].values[0]
+		inp['germline'] = f'results/{wc.run}/bam/{sample_germline}.final.bam'
+	return inp
 
 # here specifies the priority of germline-tumor runs vs tmr-only when both types of samples exist 
-ruleorder: r6_mutect2_grm_vs_tmr > r7_mutect2_tumor_only
-ruleorder: r6_calculate_contamination_grm_vs_tmr > r7_calculate_contamination_tmr_only
-ruleorder: r6_filter_pass_exclude_normal_grm_vs_tmr > r7_filter_mutect_calls_tmr_only
+# ruleorder: r6_mutect2_grm_vs_tmr > r7_mutect2_tumor_only
+# ruleorder: r6_calculate_contamination_grm_vs_tmr > r7_calculate_contamination_tmr_only
+# ruleorder: r6_filter_pass_exclude_normal_grm_vs_tmr > r7_filter_mutect_calls_tmr_only
 
 
 rule r5_collect_fir2_counts:

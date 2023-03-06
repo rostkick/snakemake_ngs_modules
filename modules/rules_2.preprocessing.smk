@@ -6,12 +6,12 @@ rule r2_sort_premerged_bams:
 	params:
 		samtools = config['tools']['samtools']
 	threads:
-		workflow.cores/(len(SAMPLES)*len(LANES))
+		workflow.cores/(len(ngs.SAMPLES)*len(ngs.LANES))
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
 
 rule r2_merge_bams:
 	input: 
-		bams = expand("results/{{run}}/bam/{{sample}}.{lane}.for_merge.bam", lane=LANES, allow_missing=True)
+		bams = expand("results/{{run}}/bam/{{sample}}.{lane}.for_merge.bam", lane=ngs.LANES, allow_missing=True)
 	output: 
 		bam = touch('results/{run}/bam/{sample}.for_sort2.bam')
 	params:
@@ -24,7 +24,7 @@ rule r2_sorting_bam:
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
 	threads: 
-		workflow.cores/len(SAMPLES)
+		workflow.cores/len(ngs.SAMPLES)
 	params: 
 		samtools = config['tools']['samtools']
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
@@ -79,7 +79,7 @@ rule r2_apply_bqsr:
 		gatk = config['tools']['gatk'],
 		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
 		wgs_calling_regions = config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
-	threads: workflow.cores/len(SAMPLES)
+	threads: workflow.cores/len(ngs.SAMPLES)
 	shell: """{params.gatk} ApplyBQSR \
 				-R {params.ref} \
 				-I {input.bam} \

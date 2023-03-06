@@ -1,8 +1,9 @@
 grm_dir: 'data/germline_several_lanes'
-tmr_dir: 'data/tumor_several_lanes'
+# grm_dir: ''
+# tmr_dir: 'data/tumor_several_lanes'
+tmr_dir: ""
 
 run: 'bla'
-analysis_type: 'germline'
 reads_type: 'pair'
 
 assembly: 'GRCh38'

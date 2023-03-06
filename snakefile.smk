@@ -1,49 +1,43 @@
 from itertools import product
-from modules.scripts.setup_run import setup_run
-
+from modules.scripts.params_builder import *
 
 configfile: 'configure.yml'
 
-mapping, long_df = setup_run()
 
-SAMPLES = long_df['sample'].unique().tolist()
-LANES = long_df['lane'].unique().tolist()
-
-GRM_SAMPLES = mapping['sample_grm'].dropna().tolist()
-TMR_SAMPLES = mapping['sample_tmr'].dropna().tolist()
-ALL_PATIENTS = {i[:-4] for i in TMR_SAMPLES}
-GRM_VS_TMR_PATIENTS = mapping.query("~(sample_tmr.isnull() | sample_grm.isnull())")['patient'].to_list()
-ONLY_TMR_PATIENTS =  mapping.query("sample_grm.isnull()")['patient'].to_list()
-
-GRM=config['grm_dir'] != ''
-TMR=config['tmr_dir'] != ''
-PAIR=config['reads_type'] == 'pair'
+ngs = NGSSetup()
+data = ngs.data
+mapping = ngs.mapping
 
 def final_inputs():
 	germline_inputs, somatic_inputs, metrics = [], [], []
 
 	# germline
-	germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], GRM_SAMPLES)]
-	if len(GRM_SAMPLES) > 1:
+	germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], ngs.GRM_SAMPLES)]
+	if len(ngs.GRM_SAMPLES) > 1:
 		germline_inputs = germline_inputs + [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 	# somatic
-	somatic_inputs = [f'results/{run}/somatic/{patient}/annotated.vcf.gz' for run, patient in product([config['run']], ALL_PATIENTS)]
+	somatic_inputs = [f'results/{run}/somatic/{patient}/annotated.vcf.gz' for run, patient in product([config['run']], ngs.ALL_PATIENTS)]
 	# metrics
-	metrics = [f"results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv" for run, sample in product([config['run']], SAMPLES)]
+	metrics = [f"results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv" for run, sample in product([config['run']], ngs.SAMPLES)]
 
-	if GRM and TMR is False:
+	if ngs.GRM and ngs.TMR is False:
 		return germline_inputs + metrics
-	elif GRM is False and TMR:
+	elif ngs.GRM is False and ngs.TMR:
 		return somatic_inputs + metrics
-	elif GRM and TMR:
+	elif ngs.GRM and ngs.TMR:
 		return germline_inputs + somatic_inputs + metrics
 
 wildcard_constraints:
-	sample="|".join(SAMPLES),
-	patient="|".join(ALL_PATIENTS)
+	sample="|".join(ngs.SAMPLES),
+	patient = "|".join(ngs.ALL_PATIENTS)
 
+print(ngs.__dict__)
 rule all:
-	input: final_inputs()
+	# input: final_inputs()
+	# input:  [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], ngs.GRM_SAMPLES)]
+	input: expand("results/{run}/germline/vcf/{sample}.annotated.vcf.gz", run=config['run'], sample=ngs.GRM_SAMPLES),
+			 [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
+	# input: 
 
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
@@ -52,5 +46,5 @@ include: config["snakemake_modules"] + "rules_4.germline_calling.deepvariant.smk
 include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
 include: config["snakemake_modules"] + "rules_6.somatic_calling.grm_vs_tmr.smk"
 include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
-# include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
+include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
 include: config["snakemake_modules"] + "rules_9.annotation.smk"

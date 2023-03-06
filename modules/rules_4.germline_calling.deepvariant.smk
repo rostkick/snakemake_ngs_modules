@@ -25,7 +25,7 @@ rule r4_deepvariant:
 
 rule r4_make_gvcf_list:
 	input: 
-		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=GRM_SAMPLES)
+		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=ngs.GRM_SAMPLES)
 	output: 
 		gvcfs_list = "results/{run}/germline/vcf/gvcfs.list"
 	shell: "echo {input.gvcfs} | sed 's/\\s/\\n/g' > {output.gvcfs_list}"
