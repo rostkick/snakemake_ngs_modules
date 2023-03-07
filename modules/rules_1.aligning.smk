@@ -1,7 +1,7 @@
 rule r1_read_alignment:
 	input: 
-		fr = lambda wc: ngs.data.query(f"sample=='{wc.sample}'[:-4] & lane=='{wc.lane}' & reads_orientation=='R1'")['fastq'],
-		rr = lambda wc: ngs.data.query(f"sample=='{wc.sample}'[:-4] & lane=='{wc.lane}' & reads_orientation=='R2'")['fastq']
+		fr = lambda wc: ngs.data.loc[(ngs.data["sample"]==wc.sample[:-4]) & (ngs.data["lane"]==wc.lane) & (ngs.data["reads_orientation"]=='R1'), 'fastq'].tolist()[0],
+		rr = lambda wc: ngs.data.loc[(ngs.data["sample"]==wc.sample[:-4]) & (ngs.data["lane"]==wc.lane) & (ngs.data["reads_orientation"]=='R2'), 'fastq'].tolist()[0]
 	output: 
 		bam = 'results/{run}/bam/{sample}.{lane}.for_sort1.bam'
 	log: 
