@@ -43,8 +43,8 @@ rule r2_mark_duplicates:
 	shell: """
 		{params.gatk} MarkDuplicates \
 					-I {input.bam} -O {output.bam} -M {log.log1} 2>{log.log2} \
-					--ASSUME_SORTED true"""
-		"{params.samtools} index {output.bam}"
+					--ASSUME_SORTED true
+		{params.samtools} index {output.bam}"""
 
 rule r2_prepare_bqsr:
 	input: 
