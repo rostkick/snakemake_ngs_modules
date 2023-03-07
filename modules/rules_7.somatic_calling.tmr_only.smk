@@ -45,6 +45,8 @@ use rule r6_filter_mutect_calls_grm_vs_tmr as r7_filter_mutect_calls_tmr_only wi
 	wildcard_constraints:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input: 
-		vcf = rules.r7_mutect2_tumor_only.output.vcf
+		vcf = rules.r7_mutect2_tumor_only.output.vcf,
+		contamination = rules.r7_calculate_contamination_tmr_only.output.contamination,
+		rom = rules.r5_learn_read_orientation_model.output.rom
 	output:
 		vcf = 'results/{run}/somatic/{patient}/final.vcf.gz'

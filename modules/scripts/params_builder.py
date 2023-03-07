@@ -201,22 +201,23 @@ class NGSJointSingle(NGSJointPaired):
 # family of high-level ngs classes #
 ####################################
 class Germline:
-	def __init__(self, data: pd.DataFrame):
-		self.SAMPLES = data['sample'].dropna().unique().tolist()
+	def __init__(self, mapping: pd.DataFrame):
+		self.SAMPLES = mapping['sample_grm'].dropna().unique().tolist()
 		self.GRM_SAMPLES = [i for i in self.SAMPLES if '_grm' in i]
 		self.GRM_SAMPLES = self.SAMPLES if len(self.GRM_SAMPLES) == 0 else self.GRM_SAMPLES
 
 class Tumor:
-	def __init__(self, data: pd.DataFrame):
-		self.SAMPLES = data['sample'].dropna().unique().tolist()
+	def __init__(self, mapping: pd.DataFrame):
+		self.SAMPLES = mapping['sample_tmr'].dropna().unique().tolist()
 		self.TMR_SAMPLES = [i for i in self.SAMPLES if '_tmr' in i]
 		self.TMR_SAMPLES = self.SAMPLES if len(self.TMR_SAMPLES) == 0 else self.TMR_SAMPLES
-		self.ALL_PATIENTS = self.TMR_SAMPLES.copy()
-		self.ONLY_TMR_PATIENTS = self.TMR_SAMPLES.copy()
+		self.TMR_PATIENTS = mapping['patient'].dropna().unique().tolist()
+		self.ONLY_TMR_PATIENTS = self.TMR_PATIENTS.copy()
 
 class GermlineAndTumor:
 	def __init__(self, mapping: pd.DataFrame):
-		self.ALL_PATIENTS = mapping['patient'].dropna().to_list()
+		self.SAMPLES = mapping['sample_grm'].dropna().unique().tolist() + mapping['sample_tmr'].dropna().unique().tolist()
+		self.TMR_PATIENTS = mapping['patient'].dropna().to_list()
 		self.GRM_VS_TMR_PATIENTS = mapping.query("~(sample_tmr.isnull() | sample_grm.isnull())")['patient'].to_list()
 		self.ONLY_TMR_PATIENTS =  mapping.query("sample_grm.isnull()")['patient'].to_list()
 
@@ -228,7 +229,7 @@ class NGSSetup(Germline, Tumor, GermlineAndTumor):
 		self.PAIR=config['reads_type'] == 'pair'
 
 		self.GRM_SAMPLES = []
-		self.ALL_PATIENTS = []
+		self.TMR_PATIENTS = []
 		self.GRM_VS_TMR_PATIENTS = []
 		self.ONLY_TMR_PATIENTS = []
 
@@ -238,9 +239,9 @@ class NGSSetup(Germline, Tumor, GermlineAndTumor):
 
 		self.LANES = ngs.data['lane'].dropna().unique().tolist()
 		if self.GRM:
-			Germline.__init__(self, self.data)
+			Germline.__init__(self, self.mapping)
 		if self.TMR:
-			Tumor.__init__(self, self.data)
+			Tumor.__init__(self, self.mapping)
 		if self.GRM & self.TMR:
 			GermlineAndTumor.__init__(self, self.mapping)
 
