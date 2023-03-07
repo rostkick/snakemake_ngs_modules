@@ -14,5 +14,5 @@ rule r1_read_alignment:
 	shell: """{params.bwa_mem2} mem \
 				-M -t {threads} -R '@RG\\tID:{wildcards.lane}\\tSM:{wildcards.sample}\\tLB:1\\tPL:ILLUMINA' \
 				{params.reference} {input.fr} {input.rr} 2>{log} |\
-			{params.samtools} view -bS -o {output} -
+			{params.samtools} view -bS -o {output.bam} -
 			"""
