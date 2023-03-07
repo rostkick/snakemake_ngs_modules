@@ -22,7 +22,7 @@ rule r2_sorting_bam:
 	input: 
 		bam = rules.r2_merge_bams.output.bam
 	output: 
-		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
+		bam = "results/{run}/bam/{sample}.for_dedup.bam"
 	threads: 
 		workflow.cores/len(ngs.SAMPLES)
 	params: 
@@ -33,7 +33,7 @@ rule r2_mark_duplicates:
 	input: 
 		bam = rules.r2_sorting_bam.output.bam
 	output: 
-		bam = temp("results/{run}/bam/{sample}.for_bqsr.bam")
+		bam = "results/{run}/bam/{sample}.for_bqsr.bam"
 	params:
 		gatk = config['tools']['gatk'],
 		samtools = config['tools']['samtools']
@@ -50,7 +50,7 @@ rule r2_prepare_bqsr:
 	input: 
 		bam = rules.r2_mark_duplicates.output.bam
 	output: 
-		bqsr = temp("results/{run}/bam/{sample}.for_bqsr.recal.table")
+		bqsr = "results/{run}/bam/{sample}.for_bqsr.recal.table"
 	log: 
 		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params:

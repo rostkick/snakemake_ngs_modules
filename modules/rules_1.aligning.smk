@@ -3,7 +3,7 @@ rule r1_read_alignment:
 		fr = lambda wc: ngs.data.query(f"sample=='{wc.sample}' & lane=='{wc.lane}' & reads_orientation=='R1'")['fastq'],
 		rr = lambda wc: ngs.data.query(f"sample=='{wc.sample}' & lane=='{wc.lane}' & reads_orientation=='R2'")['fastq']
 	output: 
-		bam = temp('results/{run}/bam/{sample}.{lane}.for_sort1.bam')
+		bam = 'results/{run}/bam/{sample}.{lane}.for_sort1.bam'
 	log: 
 		'results/{run}/logs/aligning/{sample}.{lane}.bwa_mem2.log'
 	params: 
