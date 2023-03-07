@@ -9,7 +9,7 @@ data = ngs.data
 mapping = ngs.mapping
 
 print(ngs.__dict__)
-ngs.data.to_csv('bla.tsv', sep='\t	')
+ngs.data.to_csv('bla.tsv', sep='\t')
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
 	patient = "|".join(ngs.TMR_PATIENTS)
