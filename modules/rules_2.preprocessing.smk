@@ -1,6 +1,15 @@
+rule r2_sam_to_bam:
+	input: 
+		sam = rules.r1_read_alignment.output.sam
+	output:
+		bam = 'results/{run}/bam/{sample}.{lane}.for_sort1.bam'
+	params:
+		samtools = config['tools']['samtools']
+	shell: "{params.samtools} view -bS -o {output.bam} {input.sam}"
+
 rule r2_sort_premerged_bams:
 	input: 
-		bam = rules.r1_read_alignment.output.bam
+		bam = rules.r2_sam_to_bam.output.bam
 	output: 
 		bam = touch('results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	params:
