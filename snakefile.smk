@@ -8,7 +8,7 @@ ngs = NGSSetup()
 data = ngs.data
 mapping = ngs.mapping
 
-print(ngs.__dict__)
+# print(ngs.__dict__)
 ngs.data.to_csv('bla.tsv', sep='\t')
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),

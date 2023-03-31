@@ -4,7 +4,7 @@ rule r7_mutect2_tumor_only:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input: 
 		bam = lambda wc: get_somatic_input(wc, mapping)['tumor'],
-		capture = rules.r2_bed_to_intervals.output.intervals
+		capture = rules.r2_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
 	output: 
 		vcf = 'results/{run}/somatic/{patient}/raw.vcf.gz',
 		bam = 'results/{run}/somatic/{patient}/raw.bam'

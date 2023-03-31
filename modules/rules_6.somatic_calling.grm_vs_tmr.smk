@@ -4,7 +4,7 @@ rule r6_mutect2_grm_vs_tmr:
 	input: 
 		bam_tmr = lambda wc: get_somatic_input(wc, mapping)['tumor'],
 		bam_grm = lambda wc: get_somatic_input(wc, mapping)['germline'],
-		capture = rules.r2_bed_to_intervals.output.intervals
+		capture = rules.r2_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
 	output: 
 		vcf = temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
 		bam = temp('results/{run}/somatic/{patient}/raw.bam')

@@ -8,20 +8,22 @@ rule r4_deepvariant:
 	params:
 		singularity = config['tools']['singularity'],
 		deepvariant = config['tools']['deepvariant'],
+		ngs_type = config['ngs_type'],
 		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
 		panel_capture = config['panel_capture']['target']
-	threads: workflow.cores/2
+	threads: 8
+	resources: tmpdir="/mnt/tank/scratch/rskitchenko/projects/low_cow/low_cow/tmp"
 	shell: """
 			{params.singularity} run \
 				-B /mnt:/mnt \
 				{params.deepvariant} /opt/deepvariant/bin/run_deepvariant \
-				--model_type=WES \
+				--model_type={params.ngs_type} \
 				--output_vcf={output.vcf} \
 				--output_gvcf={output.gvcf} \
 				--reads={input.bam} \
 				--ref={params.ref} \
-				--regions {params.panel_capture} \
 				--num_shards={threads} &>{log} || true"""
+				# --regions {params.panel_capture} \
 
 rule r4_make_gvcf_list:
 	input: 
@@ -48,5 +50,5 @@ rule r4_merge_glnexus:
 				--dir {params.run_dir} \
 				-t {threads} \
 				{input} 2>{log} | \
-				{params.bcftools} view --min-ac 1 -i "%FILTER=='.'" -Oz -o {output} - && \
+				{params.bcftools} view --min-ac 1 -i "%FILTER=='.'" -Oz -o {output.vcf} - && \
 				rm -rf {params.run_dir}'''

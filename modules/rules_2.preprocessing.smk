@@ -5,7 +5,9 @@ rule r2_sam_to_bam:
 		bam = 'results/{run}/bam/{sample}.{lane}.for_sort1.bam'
 	params:
 		samtools = config['tools']['samtools']
-	shell: "{params.samtools} view -bS -o {output.bam} {input.sam}"
+	threads:
+		workflow.cores/(len(ngs.SAMPLES)*len(ngs.LANES)) if config['ngs_type'] == 'WES' else workflow.cores/2
+	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
 
 rule r2_sort_premerged_bams:
 	input: 
