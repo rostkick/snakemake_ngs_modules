@@ -88,11 +88,11 @@ rule r6_filter_pass_exclude_normal_grm_vs_tmr:
 		vcf = 'results/{run}/somatic/{patient}/final.vcf.gz'
 	params: 
 		bcftools = config['tools']['bcftools']
-	threads: 
-		workflow.cores/max(len(ngs.GRM_VS_TMR_PATIENTS), 1)
+	# threads: 
+	# 	workflow.cores/max(len(ngs.GRM_VS_TMR_PATIENTS), 1)
 	shell:"""
 			tumor_sample=$(zcat {input.vcf} | \
 					grep -oP '##tumor_sample=\K.+') &&\
 					{params.bcftools} view -i "%FILTER='PASS'" \
-					-s $tumor_sample -t {threads} \
+					-s $tumor_sample \
 					-Oz -o {output.vcf} {input.vcf}"""

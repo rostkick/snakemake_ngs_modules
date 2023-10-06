@@ -25,8 +25,8 @@ rule r5_collect_fir2_counts:
 		'results/{run}/logs/somatic/{patient}/CollectF1R2Counts.log'
 	params:
 		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-	shell:
-		"""gatk CollectF1R2Counts \
+	shell:"""
+		gatk CollectF1R2Counts \
 				-R {params.ref} \
 				-I {input.bam} \
 				-O {output.f1r2} 2>{log}"""
@@ -39,8 +39,8 @@ rule r5_learn_read_orientation_model:
 		rom = temp('results/{run}/somatic/{patient}/read-orientation-model.tar.gz')
 	log: 
 		'results/{run}/logs/somatic/{patient}/LearnReadOrientationModel.log'
-	shell: 
-		"""gatk LearnReadOrientationModel \
+	shell: """
+			gatk LearnReadOrientationModel \
 				-I {input.f1r2} \
 				-O {output.rom} 2>{log}"""
 

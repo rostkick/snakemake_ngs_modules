@@ -1,10 +1,8 @@
-rule r9_vep_germline:
-	wildcard_constraints: 
-		sample = "|".join(ngs.GRM_SAMPLES)
-	input: 
-		vcf = rules.r4_deepvariant.output.vcf
-	output: 
-		vcf = "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
+rule r9_vep_germline_joint:
+	input:
+		vcf = rules.r4_mergevcfs.output.vcf
+	output:
+		vcf = 'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
 	params: 
 		singularity = config['tools']['singularity'],
 		assembly = config['assembly'],
@@ -13,8 +11,8 @@ rule r9_vep_germline:
 		cache = config['tools']['vep']['cache'],
 		plugins = config['tools']['vep']['plugins'],
 		mpc_data = config['tools']['vep']['plugins_data']['MPC']
-	log: 
-		'results/{run}/logs/germline/{sample}.annotation.log'
+	log:
+		'results/{run}/logs/germline/annotation.log'
 	threads: 
 		workflow.cores
 	shell: """{params.singularity} run -B /mnt:/mnt {params.vep} \
@@ -43,15 +41,18 @@ rule r9_vep_germline:
 				--fork {threads} 2>{log}
 			"""
 
-use rule r9_vep_germline as r9_vep_germline_joint with:
-	input:
-		vcf = rules.r4_merge_glnexus.output.vcf
-	output:
-		vcf = 'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
-	log:
-		'results/{run}/logs/germline/annotation.log'
+# use rule r9_vep_germline_joint as r9_vep_germline_sample with:
+# 	wildcard_constraints: 
+# 		sample = "|".join(ngs.GRM_SAMPLES)
+# 	input: 
+# 		vcf = rules.r4_deepvariant.output.vcf
+# 	output: 
+# 		vcf = "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
+# 	log: 
+# 		'results/{run}/logs/germline/{sample}.annotation.log'
 
-use rule r9_vep_germline as r9_vep_somatic with:
+
+use rule r9_vep_germline_joint as r9_vep_somatic with:
 	input: 
 		vcf = rules.r6_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if ngs.GRM & ngs.TMR else rules.r7_filter_mutect_calls_tmr_only.output.vcf
 	output:

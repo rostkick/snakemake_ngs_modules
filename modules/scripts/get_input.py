@@ -6,7 +6,8 @@ def final_inputs(ngs):
 	germline_inputs, somatic_inputs, metrics = [], [], []
 
 	# germline
-	germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], ngs.GRM_SAMPLES)]
+	germline_inputs = []
+	# germline_inputs = [f'results/{run}/germline/vcf/{sample}.annotated.vcf.gz' for run, sample in product([config['run']], ngs.GRM_SAMPLES)]
 	if len(ngs.GRM_SAMPLES) > 1:
 		germline_inputs = germline_inputs + [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 	# somatic
@@ -14,9 +15,15 @@ def final_inputs(ngs):
 	# metrics
 	metrics = [f"results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv" for run, sample in product([config['run']], ngs.SAMPLES)]
 
+
 	if ngs.GRM and ngs.TMR is False:
-		return germline_inputs + metrics
+		input_files = germline_inputs
 	elif ngs.GRM is False and ngs.TMR:
-		return somatic_inputs + metrics
+		input_files = somatic_inputs
 	elif ngs.GRM and ngs.TMR:
-		return germline_inputs + somatic_inputs + metrics
+		input_files = germline_inputs + somatic_inputs
+
+	if config['ngs_type'] != 'WGS':
+		input_files = input_files + metrics
+	
+	return input_files

@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess as sp
 from glob import glob
 from abc import ABCMeta, abstractmethod
 import pandas as pd
@@ -8,6 +9,7 @@ from itertools import chain, product
 from difflib import SequenceMatcher
 from dataclasses import dataclass
 from snakemake.workflow import config
+
 
 #####################################
 # family of sequencing data classes #
@@ -31,8 +33,22 @@ class DataProcessor(metaclass=ABCMeta):
 	def extract_list(self, path: str) -> list:
 		pass
 	@abstractmethod
+	def extract_params(self, sample: pd.Series, fastq: list) -> pd.Series:
+		pass
+	@abstractmethod
 	def convert_to_dataframe(self, sample: pd.Series, fastq: list) -> pd.Series:
 		pass
+	@abstractmethod
+	def create_link(self, df: pd.Series) -> pd.DataFrame:
+		pass
+
+	def convert_to_dataframe(self, fastq: list) -> pd.DataFrame:
+		df = pd.DataFrame({'fastq': fastq})
+		df['base_fastq'] = df['fastq'].apply(lambda x: os.path.basename(x))
+		df['dir_fastq'] = df['fastq'].apply(lambda x: os.path.dirname(x)+'/')
+		df['link_dir'] = df['dir_fastq']+ "links/"
+		return df
+
 	def trim_sample_name(self, df=None) -> pd.DataFrame:
 		if len(df['sample']) > 1:
 			series_list = df['sample'].str.split(r'_|\.|-')
@@ -48,36 +64,60 @@ class DataProcessor(metaclass=ABCMeta):
 			df['sample'] = df['sample'].str.extract('(.+?)[_\-\.\|].*')[0]
 		return df
 
+	def write_link(self, df: pd.DataFrame) -> pd.DataFrame:
+		fastq = df['fastq'].tolist()
+		link_dir = df['link_dir'].tolist()
+		links = df['link_name'].tolist()
+		link_dir = df['link_dir']
+	
+		for fq, link_d, link in zip(fastq, link_dir, links):
+			sp.run(f'mkdir -p {link_d}', shell=True)
+			sp.run(f'ln -fs {fq} {link}', shell=True)
+
+		df = df.drop(['fastq', 'base_fastq', 'dir_fastq', 'link_dir'], axis=1)
+		df = df.rename({'link_name': 'fastq'}, axis=1)
+		return df
+
 class DataProcessorSingle(DataProcessor):
 	def __init__(self, path:str) -> pd.DataFrame:
 		fastq = self.extract_list(path)
-		df = self.convert_to_dataframe(fastq)
-		self.df = super().trim_sample_name(df)
+		df = super().convert_to_dataframe(fastq)
+		df = self.extract_params(df)
+		df = super().trim_sample_name(df)
+		df = self.create_link(df)
+		self.df = super().write_link(df)
 
 	def extract_list(self, path: str) -> list:
 		seq = SeqDir(path)
 		return seq.seqs
 
-	def convert_to_dataframe(self, fastq):
-		df = pd.DataFrame({'fastq': fastq})
-		df['base_fastq'] = df['fastq'].apply(lambda x: os.path.basename(x))
-		df_extracted = df['base_fastq'].str.extractall(r'(?P<sample>.*)[_\-\.](?P<lane>[lL]\d*)[_\-\.]?.*?').droplevel(1)
+	def extract_params(self, df: pd.DataFrame) -> pd.DataFrame:
+		df_extracted = df['base_fastq'].str.extractall(r'(?P<sample>.*)[_\-\.](?P<lane>[lL][\d]*)[_\-\.]?.*?').droplevel(1)
+		df_extracted['lane'] = df_extracted['lane'].fillna('L001')
 		df = pd.concat([df, df_extracted], axis=1)
-		df = df.drop('base_fastq', axis=1)
+		return df
+
+	def create_link(self, df: pd.DataFrame) -> pd.DataFrame:
+		df['link_name'] = df['link_dir']+df['sample'] + '_' + df['lane'] + '_' + '.fastq'
 		return df
 
 class DataProcessorPaired(DataProcessorSingle):
 	def __init__(self, path: str) -> pd.DataFrame:
 		fastq = super().extract_list(path)
-		df = self.convert_to_dataframe(fastq)
-		self.df = super().trim_sample_name(df)
+		df = super().convert_to_dataframe(fastq)
+		df = self.extract_params(df)
+		df = super().trim_sample_name(df)
+		df = self.create_link(df)
+		self.df = super().write_link(df)
 
-	def convert_to_dataframe(self, fastq):
-		df = pd.DataFrame({'fastq': fastq})
-		df['base_fastq'] = df['fastq'].apply(lambda x: os.path.basename(x))
-		df_extracted = df['base_fastq'].str.extractall(r'(?P<sample>.*)[_\-\.](?P<lane>[lL]\d*)[_\-\.](?P<reads_orientation>[Rr][12])[_\-\.]?.*?').droplevel(1)
+	def extract_params(self, df: pd.DataFrame) -> pd.DataFrame:
+		df_extracted = df['base_fastq'].str.extractall(r'(?P<sample>.+?)[_\-\.](?P<lane>[lL][0-9M]*)?[_\-\.]?(?P<reads_orientation>[Rr][12])[_\-\.]?.*?').droplevel(1)
+		df_extracted['lane'] = df_extracted['lane'].fillna('L001')
 		df = pd.concat([df, df_extracted], axis=1)
-		df = df.drop('base_fastq', axis=1)
+		return df
+	
+	def create_link(self, df: pd.DataFrame) -> pd.DataFrame:
+		df['link_name'] = df['link_dir']+df['sample'] + '_' + df['lane'] + '_' + df['reads_orientation'] + '.fastq'
 		return df
 
 class Mapping:
@@ -109,13 +149,13 @@ class MappedGermTumor:
 		df_matched = df.loc[df['distance']>=self.DISTANCE_THRESHOLD, :]
 
 		df_grm_unmatched = pd.DataFrame()
-		df_grm_unmatched.loc[:, 'sample_grm'] = df.loc[df['distance']<self.DISTANCE_THRESHOLD, 'sample_grm'].drop_duplicates().dropna()
+		df_grm_unmatched.loc[:, 'sample_grm'] = df.loc[df['distance']<=self.DISTANCE_THRESHOLD, 'sample_grm'].drop_duplicates().dropna()
 		df_grm_unmatched.loc[:, 'sample_tmr'] = np.nan
 		df_grm_unmatched.loc[:, 'distance'] = np.nan
 
 		df_tmr_unmatched = pd.DataFrame()
 		df_tmr_unmatched['sample_grm'] = np.nan
-		df_tmr_unmatched.loc[:, 'sample_tmr'] = df.loc[df['distance']<self.DISTANCE_THRESHOLD, 'sample_tmr'].drop_duplicates().dropna()
+		df_tmr_unmatched.loc[:, 'sample_tmr'] = df.loc[df['distance']<=self.DISTANCE_THRESHOLD, 'sample_tmr'].drop_duplicates().dropna()
 		df_tmr_unmatched.loc[:, 'distance'] = np.nan
 
 		df = pd.concat([df_matched, df_grm_unmatched, df_tmr_unmatched])
@@ -166,10 +206,14 @@ class NGSJointPaired(NGS):
 		return MappedGermTumor(grm, tmr).mapping
 
 	def get_wide_df(self, mapping, grm, tmr):
-		wide_df = pd.merge(mapping, grm.df, how='outer', left_on='sample_grm', right_on='sample')
+
+		mapping['sample'] = mapping['sample_grm'].str[:-4]
+		wide_df = pd.merge(mapping, grm.df, how='outer', left_on='sample', right_on='sample')
+		# wide_df = wide_df.drop('sample', axis=1)
+		wide_df = pd.merge(wide_df, tmr.df, how='outer', left_on=['sample'],
+														right_on=['sample'], suffixes=['_grm', '_tmr'])
 		wide_df = wide_df.drop('sample', axis=1)
-		wide_df = pd.merge(wide_df, tmr.df, how='outer', left_on=['sample_tmr'], right_on=['sample'], suffixes=['_grm', '_tmr'])
-		wide_df = wide_df.drop('sample', axis=1)
+		# pd.options.display.max_colwidth = 300
 		return wide_df
 
 	def get_long_df(self, wide_df):
@@ -202,7 +246,7 @@ class NGSJointSingle(NGSJointPaired):
 ####################################
 class Germline:
 	def __init__(self, mapping: pd.DataFrame):
-		self.SAMPLES = mapping['sample_grm'].dropna().unique().tolist()
+		self.SAMPLES = mapping['patient'].dropna().unique().tolist()
 		self.GRM_SAMPLES = [i for i in self.SAMPLES if '_grm' in i]
 		self.GRM_SAMPLES = self.SAMPLES if len(self.GRM_SAMPLES) == 0 else self.GRM_SAMPLES
 
@@ -221,7 +265,7 @@ class GermlineAndTumor:
 		self.GRM_VS_TMR_PATIENTS = mapping.query("~(sample_tmr.isnull() | sample_grm.isnull())")['patient'].to_list()
 		self.ONLY_TMR_PATIENTS =  mapping.query("sample_grm.isnull()")['patient'].to_list()
 
-class NGSSetup(Germline, Tumor, GermlineAndTumor):
+class NGSSetup(Germline):#, Tumor, GermlineAndTumor):
 	def __init__(self):
 
 		self.GRM=config['grm_dir'] != ''

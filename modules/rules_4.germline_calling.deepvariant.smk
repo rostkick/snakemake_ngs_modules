@@ -49,6 +49,7 @@ rule r4_merge_glnexus:
 				--list --trim-uncalled-alleles\
 				--dir {params.run_dir} \
 				-t {threads} \
+				--mem-gbytes 200 \
 				{input} 2>{log} | \
 				{params.bcftools} view --min-ac 1 -i "%FILTER=='.'" -Oz -o {output.vcf} - && \
 				rm -rf {params.run_dir}'''

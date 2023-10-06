@@ -5,6 +5,7 @@ tmr_dir: 'data/tumor_several_lanes'
 
 run: 'bla'
 reads_type: 'pair'
+ngs_type: 'WES'
 
 assembly: 'GRCh38'
 
