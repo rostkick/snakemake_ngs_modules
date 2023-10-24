@@ -54,7 +54,7 @@ rule r9_vep_germline_joint:
 
 use rule r9_vep_germline_joint as r9_vep_somatic with:
 	input: 
-		vcf = rules.r6_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if ngs.GRM & ngs.TMR else rules.r7_filter_mutect_calls_tmr_only.output.vcf
+		vcf = rules.r6_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if (ngs.GRM & ngs.TMR) else rules.r7_filter_mutect_calls_tmr_only.output.vcf
 	output:
 		vcf = 'results/{run}/somatic/{patient}/annotated.vcf.gz'
 	log: 

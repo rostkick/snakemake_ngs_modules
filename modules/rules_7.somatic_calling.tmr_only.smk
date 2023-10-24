@@ -1,13 +1,12 @@
-
 rule r7_mutect2_tumor_only:
 	wildcard_constraints:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input: 
-		bam = lambda wc: get_somatic_input(wc, mapping)['tumor'],
+		bam = lambda wc: get_somatic_input(wc, ngs.data)['tumor'],
 		capture = rules.r2_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
 	output: 
-		vcf = 'results/{run}/somatic/{patient}/raw.vcf.gz',
-		bam = 'results/{run}/somatic/{patient}/raw.bam'
+		vcf = 'results/{run}/somatic/{patient}/raw_tonly.vcf.gz',
+		bam = 'results/{run}/somatic/{patient}/raw_tonly.bam'
 	log: 
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
@@ -30,7 +29,7 @@ rule r7_calculate_contamination_tmr_only:
 	input: 
 		getpileupsum_tmr = rules.r5_get_pileup_summaries_tmr.output.getpileupsum
 	output: 
-		contamination = 'results/{run}/somatic/{patient}/contamination.table'
+		contamination = 'results/{run}/somatic/{patient}/contamination_tonly.table'
 	params:
 		gatk = config['tools']['gatk']
 	log: 
@@ -49,4 +48,4 @@ use rule r6_filter_mutect_calls_grm_vs_tmr as r7_filter_mutect_calls_tmr_only wi
 		contamination = rules.r7_calculate_contamination_tmr_only.output.contamination,
 		rom = rules.r5_learn_read_orientation_model.output.rom
 	output:
-		vcf = 'results/{run}/somatic/{patient}/final.vcf.gz'
+		vcf = 'results/{run}/somatic/{patient}/final_tonly.vcf.gz'

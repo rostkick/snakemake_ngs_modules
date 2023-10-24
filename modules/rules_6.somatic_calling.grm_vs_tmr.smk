@@ -2,8 +2,8 @@ rule r6_mutect2_grm_vs_tmr:
 	wildcard_constraints:
 		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
-		bam_tmr = lambda wc: get_somatic_input(wc, mapping)['tumor'],
-		bam_grm = lambda wc: get_somatic_input(wc, mapping)['germline'],
+		bam_tmr = lambda wc: get_somatic_input(wc, ngs.data)['tumor'],
+		bam_grm = lambda wc: get_somatic_input(wc, ngs.data)['germline'],
 		capture = rules.r2_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
 	output: 
 		vcf = temp('results/{run}/somatic/{patient}/raw.vcf.gz'),
@@ -12,7 +12,7 @@ rule r6_mutect2_grm_vs_tmr:
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
 		gatk = config['tools']['gatk'],
-		sample_name = lambda wc: mapping.loc[:, 'sample_grm'][mapping.loc[:, 'patient']==wc.patient].values[0],
+		sample_name = lambda wc: wc.patient + '_grm',
 		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
 		grm_res = config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
 		pon = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
@@ -31,7 +31,7 @@ use rule r5_get_pileup_summaries_tmr as r6_get_pileup_summaries_grm with:
 	wildcard_constraints:
 		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
-		bam = lambda wc: get_somatic_input(wc, mapping)['germline']
+		bam = lambda wc: get_somatic_input(wc, ngs.data)['germline']
 	output: 
 		getpileupsum = temp('results/{run}/somatic/{patient}/getpileupsummaries_grm.table')
 	log: 
