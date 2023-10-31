@@ -6,13 +6,9 @@ configfile: 'configure.yml'
 
 ngs = NGSSetup()
 data = ngs.data
-mapping = ngs.mapping
 
-# ngs.data
-# print(ngs.__dict__)
-print(ngs.LANES)
 ngs.data.to_csv('bla.tsv', sep='\t')
-print(ngs.SAMPLES)
+
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
 	patient = "|".join(ngs.TMR_PATIENTS)
