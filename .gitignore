@@ -4,3 +4,4 @@
 data
 *.tsv
 docker
+ngs_pipeline/ngs-deps
