@@ -3,3 +3,4 @@
 .snakemake
 data
 *.tsv
+docker
