@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+
+  deps:
+    build: ./ngs-deps/
+    image: deps
+
+  final:
+    build: .
+    image: final
+    stdin_open: true
+    tty: true
+    volumes:
+      - '/media/RAID/SEQUENCES/:/usr/reads'
