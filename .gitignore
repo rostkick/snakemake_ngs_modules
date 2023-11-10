@@ -3,5 +3,4 @@
 .snakemake
 data
 *.tsv
-docker
-ngs_pipeline/ngs-deps
+ngs_pipeline/ngs-deps/tools/
