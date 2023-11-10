@@ -1,7 +1,10 @@
 # grm_dir: 'data/germline_several_lanes'
-grm_dir: ''
-tmr_dir: 'data/tumor_several_lanes'
-# tmr_dir: ""
+grm_dir: '/usr/ngs/data/grm'
+# tmr_dir: 'data/tumor_several_lanes'
+tmr_dir: ""
+
+panel_capture:
+  target: "/usr/ngs/data/capture.bed"
 
 run: 'bla'
 reads_type: 'pair'
@@ -9,12 +12,11 @@ ngs_type: 'WES'
 
 assembly: 'GRCh38'
 
-snakemake_modules: "/mnt/tank/scratch/rskitchenko/projects/snakemake_ngs_modules/modules/"
+snakemake_modules: "/usr/ngs/pipeline/modules/"
 
 liftover:
   chain: "/mnt/tank/scratch/rskitchenko/projects/medulo/hg38ToHg19.over.chain_mod.gz"
   reference_fasta: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
-
 
 references37:
   genome_fa: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
@@ -57,6 +59,3 @@ tools:
       MPC: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_constraint_official_mpc_values_v2.txt.gz"
       ExACpLI: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt"
       gnomAD_pLI: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins/gnomad.v2.1.1.lof_metrics.by_gene.gene_pli.txt"
-
-panel_capture:
-  target: "/mnt/tank/scratch/rskitchenko/projects/medulo/data/ftp.evrogen.net/21110951/truseq-exome-targeted-regions-manifest-v1-2.GRCh38.bed"

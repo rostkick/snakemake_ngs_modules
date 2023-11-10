@@ -3,8 +3,6 @@ FROM ngs.deps AS ngs.final
 
 WORKDIR /usr/ngs
 
-# COPY modules ./pipeline/modules
-# COPY snakefile.smk ./pipeline
-# COPY configure.yml ./pipeline
-
-COPY ngs ./pipeline
+COPY ngs/snakefile.smk ./pipeline/snakefile.smk
+COPY ngs/configure.yml ./pipeline/configure.yml
+COPY ngs/modules ./pipeline/modules/
