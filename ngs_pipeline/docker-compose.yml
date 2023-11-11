@@ -13,5 +13,5 @@ services:
     tty: true
     volumes:
       - './data/:/usr/ngs/data/'
-    command: "snakemake -s pipeline/snakefile.smk -c 1 -j 1 --configfile pipeline/configure.yml -n -q"
-
+      - './results/:/usr/ngs/results/'
+    command: snakemake -s pipeline/snakefile.smk -c 1 -j 1 --configfile pipeline/configure.yml -n -q
