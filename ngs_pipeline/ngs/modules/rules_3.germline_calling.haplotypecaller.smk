@@ -1,4 +1,4 @@
-rule r4_haplotypecaller:
+rule r3_haplotypecaller:
 	input: 
 		bam = rules.r2_apply_bqsr.output.bam
 	output:
@@ -18,7 +18,7 @@ rule r4_haplotypecaller:
 		-ERC GVCF \
 		--native-pair-hmm-threads {threads} 2>{log} || true"""
 
-rule r4_haplotypecaller_wgs:
+rule r3_haplotypecaller_wgs:
 	input: 
 		bam = rules.r2_apply_bqsr.output.bam
 	output:
@@ -36,7 +36,7 @@ rule r4_haplotypecaller_wgs:
 		-ERC GVCF \
 		--native-pair-hmm-threads {threads} 2>{log} || true"""
 
-rule r4_combinegvcfs:
+rule r3_combinegvcfs:
 	input: 
 		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=ngs.SAMPLES) \
 					if config['ngs_type'] != 'WGS' else \
@@ -53,9 +53,9 @@ rule r4_combinegvcfs:
 		{params.gvcf} \
 		-O {output.gvcf} 2>{log}"""
 
-rule r4_genotypegvcfs:
+rule r3_genotypegvcfs:
 	input: 
-		gvcf = rules.r4_combinegvcfs.output.gvcf
+		gvcf = rules.r3_combinegvcfs.output.gvcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.to_filters.vcf.gz"
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
@@ -69,9 +69,9 @@ rule r4_genotypegvcfs:
 		-V {input.gvcf} \
 		-O {output.vcf} 2>{log}"""
 
-rule r4_genotypegvcfs_wgs:
+rule r3_genotypegvcfs_wgs:
 	input: 
-		gvcf = rules.r4_combinegvcfs.output.gvcf
+		gvcf = rules.r3_combinegvcfs.output.gvcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.to_filters.wgs.vcf.gz"
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
@@ -84,9 +84,9 @@ rule r4_genotypegvcfs_wgs:
 		-O {output.vcf} 2>{log}"""
 
 
-rule r4_selectvariants_snp:
+rule r3_selectvariants_snp:
 	input:
-		vcf = rules.r4_genotypegvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_genotypegvcfs_wgs.output.vcf
+		vcf = rules.r3_genotypegvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r3_genotypegvcfs_wgs.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/snps.vcf.gz"
 	params:
@@ -97,9 +97,9 @@ rule r4_selectvariants_snp:
 		-select-type SNP \
 		-O {output.vcf} 2>{log}"""
 
-rule r4_selectvariants_indel:
+rule r3_selectvariants_indel:
 	input:
-		vcf = rules.r4_genotypegvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_genotypegvcfs_wgs.output.vcf
+		vcf = rules.r3_genotypegvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r3_genotypegvcfs_wgs.output.vcf
 	output:
 		vcf = "results/{run}/germline/vcf/indel.vcf.gz"
 	params:
@@ -110,9 +110,9 @@ rule r4_selectvariants_indel:
 		-select-type INDEL \
 		-O {output.vcf} 2>{log}"""
 
-rule r4_variantfiltration_snp:
+rule r3_variantfiltration_snp:
 	input: 
-		vcf = rules.r4_selectvariants_snp.output.vcf
+		vcf = rules.r3_selectvariants_snp.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/snps.filtered.vcf.gz"
 	params:
@@ -129,9 +129,9 @@ rule r4_variantfiltration_snp:
 		-filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" \
 		-O {output.vcf} 2>{log}"""
 
-rule r4_variantfiltration_indel:
+rule r3_variantfiltration_indel:
 	input: 
-		vcf = rules.r4_selectvariants_indel.output.vcf
+		vcf = rules.r3_selectvariants_indel.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/indel.filtered.vcf.gz"
 	params:
@@ -145,10 +145,10 @@ rule r4_variantfiltration_indel:
 		-filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" \
 		-O {output.vcf} 2>{log}"""
 
-rule r4_mergevcfs:
+rule r3_mergevcfs:
 	input: 
-		snps = rules.r4_variantfiltration_snp.output.vcf,
-		indels = rules.r4_variantfiltration_indel.output.vcf
+		snps = rules.r3_variantfiltration_snp.output.vcf,
+		indels = rules.r3_variantfiltration_indel.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.vcf.gz"
 	params:

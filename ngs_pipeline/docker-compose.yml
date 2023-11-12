@@ -10,8 +10,10 @@ services:
     build: .
     image: final
     stdin_open: true
-    tty: true
+    # tty: true
     volumes:
       - './data/:/usr/ngs/data/'
       - './results/:/usr/ngs/results/'
-    command: snakemake -s pipeline/snakefile.smk -c 1 -j 1 -n -p
+    command: >
+      bash -c "snakemake -s pipeline/snakefile.smk -c 1 -j 1 -n -p &&
+      tail -f /dev/null"

@@ -1,4 +1,3 @@
-
 references:
   genome_fa: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.fasta"
   dict: "/mnt/archive/shared/references/GRCh37/GATK_b37/Homo_sapiens_assembly19.dict"

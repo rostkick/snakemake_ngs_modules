@@ -1,6 +1,6 @@
 rule r9_vep_germline_joint:
 	input:
-		vcf = rules.r4_mergevcfs.output.vcf
+		vcf = rules.r3_mergevcfs.output.vcf
 	output:
 		vcf = 'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
 	params: 

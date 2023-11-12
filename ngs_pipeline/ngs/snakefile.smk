@@ -24,5 +24,5 @@ rule all:
 
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
-include: config["snakemake_modules"] + "rules_4.germline_calling.haplotypecaller.smk"
-include: config["snakemake_modules"] + "rules_9.annotation.smk"
+include: config["snakemake_modules"] + "rules_3.germline_calling.haplotypecaller.smk"
+include: config["snakemake_modules"] + "rules_4.annotation.smk"
