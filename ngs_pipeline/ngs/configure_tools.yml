@@ -4,15 +4,8 @@ tools:
   gatk: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/smk/bin/gatk"
   bwa_mem2: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/bwa-mem2"
   picard_old: "/nfs/home/rskitchenko/picard-tools-2.0.1/picard.jar"
-  configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
   convertInversion: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/share/manta-1.6.0-1/libexec/convertInversion.py"
-  deepvariant: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/deepvariant_1.2.0.sif"
-  glnexus_cli: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/GLnexus/glnexus_cli"
   bcftools: "/nfs/home/rskitchenko/tools/bcftools-1.11/bcftools"
-  crossmap: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/CrossMap.py"
-  manta:
-    configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
-    convertInversion: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/share/manta-1.6.0-1/libexec/convertInversion.py"
   vep:
     path: "/mnt/tank/scratch/rskitchenko/ensembl-vep_latest.sif"
     cache: "/mnt/tank/scratch/rskitchenko/.vep"
