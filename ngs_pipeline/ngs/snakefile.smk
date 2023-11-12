@@ -1,28 +1,28 @@
 from modules.scripts.params_builder import *
 from modules.scripts.get_input import final_inputs
 
-configfile: 'configure.yml'
 
+# set configuration
+configfile: 'pipeline/configure_run.yml'
+configfile: 'pipeline/configure_tools.yml'
 
+if config['assembly'] == 'GRCh37':
+	configfile: 'pipeline/configure_reference_37.yml'
+elif config['assembly'] == 'GRCh38':
+	configfile: 'pipeline/configure_reference_38.yml'
+
+# init run env & paths
 ngs = NGSSetup()
-data = ngs.data
 
-ngs.data.to_csv('bla.tsv', sep='\t')
+ngs.data.to_csv('results/bla.tsv', sep='\t', index=False)
 
 wildcard_constraints:
-	sample="|".join(ngs.SAMPLES),
-	patient = "|".join(ngs.TMR_PATIENTS)
+	sample="|".join(ngs.SAMPLES)
 
 rule all:
-	input: final_inputs(ngs)
+	input: [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
 
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
-include: config["snakemake_modules"] + "rules_3.collect_metrics.smk"
-# include: config["snakemake_modules"] + "rules_4.germline_calling.deepvariant.smk"
 include: config["snakemake_modules"] + "rules_4.germline_calling.haplotypecaller.smk"
-include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
-include: config["snakemake_modules"] + "rules_6.somatic_calling.grm_vs_tmr.smk"
-include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
-# include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
 include: config["snakemake_modules"] + "rules_9.annotation.smk"

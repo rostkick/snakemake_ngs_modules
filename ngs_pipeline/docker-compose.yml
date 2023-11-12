@@ -14,4 +14,4 @@ services:
     volumes:
       - './data/:/usr/ngs/data/'
       - './results/:/usr/ngs/results/'
-    command: snakemake -s pipeline/snakefile.smk -c 1 -j 1 --configfile pipeline/configure.yml -n -q
+    command: snakemake -s pipeline/snakefile.smk -c 1 -j 1 -n -p

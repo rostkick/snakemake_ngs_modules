@@ -6,7 +6,7 @@ rule r4_haplotypecaller:
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		ref = config['references']['genome_fa'],
 		panel_capture = config['panel_capture']['target']
 	threads: 8
 	shell: """{params.gatk} --java-options "-Xmx{threads}g -XX:ParallelGCThreads=1" \
@@ -26,7 +26,7 @@ rule r4_haplotypecaller_wgs:
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		ref = config['references']['genome_fa'],
 	threads: 8
 	shell: """{params.gatk} --java-options "-Xmx{threads}g -XX:ParallelGCThreads=1" \
 		HaplotypeCaller \
@@ -38,15 +38,15 @@ rule r4_haplotypecaller_wgs:
 
 rule r4_combinegvcfs:
 	input: 
-		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=ngs.GRM_SAMPLES) \
+		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gvcf.gz", sample=ngs.SAMPLES) \
 					if config['ngs_type'] != 'WGS' else \
-						expand("results/{{run}}/germline/vcf/{sample}.wgs.gvcf.gz", sample=ngs.GRM_SAMPLES)
+						expand("results/{{run}}/germline/vcf/{sample}.wgs.gvcf.gz", sample=ngs.SAMPLES)
 	output: 
 		gvcf = "results/{run}/germline/vcf/cohort.g.vcf.gz"
 	log: 'results/{run}/logs/germline/combinegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		ref = config['references']['genome_fa'],
 		gvcf=lambda wc, input: [f'--variant {i}' for i in input]
 	shell:"""{params.gatk} CombineGVCFs \
 		-R {params.ref} \
@@ -61,7 +61,7 @@ rule r4_genotypegvcfs:
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
-		fasta_reference=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		fasta_reference=config['references']['genome_fa'],
 		panel_capture = config['panel_capture']['target']
 	shell:"""{params.gatk} GenotypeGVCFs \
 		-R {params.fasta_reference} \
@@ -77,7 +77,7 @@ rule r4_genotypegvcfs_wgs:
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
-		fasta_reference=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
+		fasta_reference=config['references']['genome_fa'],
 	shell:"""{params.gatk} GenotypeGVCFs \
 		-R {params.fasta_reference} \
 		-V {input.gvcf} \

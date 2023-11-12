@@ -37,18 +37,10 @@ def filter_combinator(whitelist):
 					break
 	return filtered_combinator
 filtered_product = filter_combinator(allow_combs)
-# print(ngs.data)
-# print(allow_combs)
-# print(filtered_product)
 
 rule r2_merge_bams:
 	input: 
 		bams = expand("results/{{run}}/bam/{{sample}}.{lane}.for_merge.bam", lane=ngs.LANES, allow_missing=True)
-		# bams = lambda wc: expand("results/{run}/bam/{sample}.{lane}.for_merge.bam",
-		# 		filtered_product,
-		# 		techname=wc.run,
-		# 		sample=wc.sample,
-		# 		lane=ngs.LANES)
 	output: 
 		bam = touch('results/{run}/bam/{sample}.for_sort2.bam')
 	params:
@@ -92,10 +84,10 @@ rule r2_prepare_bqsr:
 		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		snps = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps'],
-		indels = config['references38']['indels'] if config['assembly'] == 'GRCh38' else config['references37']['indels'],
-		wgs_calling_regions = config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
+		ref = config['references']['genome_fa'],
+		snps = config['references']['snps'],
+		indels = config['references']['indels'],
+		wgs_calling_regions = config['references']['wgs_calling_regions']
 	shell: """{params.gatk} BaseRecalibrator \
 				-R {params.ref} \
 				-I {input.bam} \
@@ -114,8 +106,8 @@ rule r2_apply_bqsr:
 		'results/{run}/logs/prep/{sample}.bqsr_apply.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		wgs_calling_regions = config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
+		ref = config['references']['genome_fa'],
+		wgs_calling_regions = config['references']['wgs_calling_regions']
 	threads: workflow.cores/len(ngs.SAMPLES)
 	shell: """{params.gatk} ApplyBQSR \
 				-R {params.ref} \
@@ -131,5 +123,5 @@ rule r2_bed_to_intervals:
 		intervals = "results/{run}/capture.intervals"
 	params:
 		picard_old = config['tools']['picard_old'],
-		ref_dict = config['references38']['dict'] if config['assembly'] == 'GRCh38' else config['references37']['dict'],
+		ref_dict = config['references']['dict'],
 	shell: "java -jar {params.picard_old} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals}"

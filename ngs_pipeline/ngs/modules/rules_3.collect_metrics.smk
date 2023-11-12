@@ -7,7 +7,7 @@ rule r3_calculateHsMetrics:
 	log: 'results/{run}/logs/hs_metrics/{sample}.hs_metrics.log'
 	params:
 		picard = config['tools']['picard_old'],
-		fasta_reference = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
+		fasta_reference = config['references']['genome_fa']
 	shell: """java -jar {params.picard} CalculateHsMetrics \
 				INPUT={input.bam} \
 				OUTPUT={output.tsv} \

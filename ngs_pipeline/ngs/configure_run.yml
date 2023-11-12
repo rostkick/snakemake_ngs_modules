@@ -1,0 +1,11 @@
+reads: 'data/grm/*.fastq.gz'
+
+panel_capture:
+  target: "data/capture.bed"
+
+run: 'bla'
+ngs_type: 'WES'
+
+assembly: 'GRCh38'
+
+snakemake_modules: "/usr/ngs/pipeline/modules/"

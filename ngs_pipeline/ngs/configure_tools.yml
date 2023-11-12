@@ -1,0 +1,23 @@
+tools:
+  singularity: "/usr/local/bin/singularity"
+  samtools: "/usr/bin/samtools"
+  gatk: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/smk/bin/gatk"
+  bwa_mem2: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/bwa-mem2"
+  picard_old: "/nfs/home/rskitchenko/picard-tools-2.0.1/picard.jar"
+  configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
+  convertInversion: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/share/manta-1.6.0-1/libexec/convertInversion.py"
+  deepvariant: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/deepvariant_1.2.0.sif"
+  glnexus_cli: "/mnt/tank/scratch/rskitchenko/projects/low_cow/100_1kg_samples_study/GLnexus/glnexus_cli"
+  bcftools: "/nfs/home/rskitchenko/tools/bcftools-1.11/bcftools"
+  crossmap: "/mnt/tank/scratch/rskitchenko/anaconda3/bin/CrossMap.py"
+  manta:
+    configManta: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/bin/configManta.py"
+    convertInversion: "/mnt/tank/scratch/rskitchenko/anaconda3/envs/py27/share/manta-1.6.0-1/libexec/convertInversion.py"
+  vep:
+    path: "/mnt/tank/scratch/rskitchenko/ensembl-vep_latest.sif"
+    cache: "/mnt/tank/scratch/rskitchenko/.vep"
+    plugins: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins"
+    plugins_data:
+      MPC: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_constraint_official_mpc_values_v2.txt.gz"
+      ExACpLI: "/mnt/tank/scratch/rskitchenko/.vep/Plugins_data/fordist_cleaned_exac_r03_march16_z_pli_rec_null_data.txt"
+      gnomAD_pLI: "/mnt/tank/scratch/rskitchenko/.vep/VEP_plugins/gnomad.v2.1.1.lof_metrics.by_gene.gene_pli.txt"
