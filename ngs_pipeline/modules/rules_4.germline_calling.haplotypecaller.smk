@@ -130,7 +130,7 @@ rule r4_variantfiltration_snp:
 		-O {output.vcf} 2>{log}"""
 
 rule r4_variantfiltration_indel:
-	input: 
+	input:
 		vcf = rules.r4_selectvariants_indel.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/indel.filtered.vcf.gz"

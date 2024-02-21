@@ -2,18 +2,18 @@ rule r2_sam_to_bam:
 	input: 
 		sam = rules.r1_read_alignment.output.sam
 	output:
-		bam = 'results/{run}/bam/{sample}.{lane}.for_sort1.bam'
+		bam = temp('results/{run}/bam/{sample}.{lane}.for_sort1.bam')
 	params:
 		samtools = config['tools']['samtools']
 	threads:
-		workflow.cores/(len(ngs.SAMPLES)*max(len(ngs.LANES), 1)) if config['ngs_type'] == 'WES' else workflow.cores/2
+		workflow.cores/(len(ngs.SAMPLES) * max(len(ngs.LANES), 1)) if config['ngs_type'] == 'WES' else workflow.cores/2
 	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
 
 rule r2_sort_premerged_bams:
 	input: 
 		bam = rules.r2_sam_to_bam.output.bam
 	output: 
-		bam = 'results/{run}/bam/{sample}.{lane}.for_merge.bam'
+		bam = temp('results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	params:
 		samtools = config['tools']['samtools']
 	threads:
@@ -37,29 +37,35 @@ def filter_combinator(whitelist):
 					break
 	return filtered_combinator
 filtered_product = filter_combinator(allow_combs)
-# print(ngs.data)
-# print(allow_combs)
-# print(filtered_product)
+
+def get_merged_bams(wc):
+	result_output = []
+	for run, sample, lane in product([config['run']], [wc.sample], ngs.LANES):
+		line = ngs.data.loc[(ngs.data["sample"]==sample) & (ngs.data["lane"]==lane), 'fastq'].tolist()
+		if line:
+			result_output.append(f'results/{run}/bam/{sample}.{lane}.sam')
+	print(result_output)
+	return result_output
 
 rule r2_merge_bams:
 	input: 
-		bams = expand("results/{{run}}/bam/{{sample}}.{lane}.for_merge.bam", lane=ngs.LANES, allow_missing=True)
-		# bams = lambda wc: expand("results/{run}/bam/{sample}.{lane}.for_merge.bam",
-		# 		filtered_product,
-		# 		techname=wc.run,
-		# 		sample=wc.sample,
-		# 		lane=ngs.LANES)
+		# bams = expand("results/{{run}}/bam/{{sample}}.{lane}.for_merge.bam", lane=ngs.LANES, allow_missing=False)
+		bams = get_merged_bams
 	output: 
-		bam = touch('results/{run}/bam/{sample}.for_sort2.bam')
+		bam = temp('results/{run}/bam/{sample}.for_sort2.bam')
 	params:
 		samtools = config['tools']['samtools']
-	shell: "{params.samtools} merge {output.bam} {input.bams}"
+	run:
+		if len(input.bams)>1:
+			shell("{params.samtools} merge {output.bam} {input.bams}")
+		else:
+			shell("ln -s {output.bams} {input.bams}")
 
 rule r2_sorting_bam:
 	input: 
 		bam = rules.r2_merge_bams.output.bam
 	output: 
-		bam = "results/{run}/bam/{sample}.for_dedup.bam"
+		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
 	threads: 
 		workflow.cores/len(ngs.SAMPLES)
 	params: 
@@ -70,24 +76,28 @@ rule r2_mark_duplicates:
 	input: 
 		bam = rules.r2_sorting_bam.output.bam
 	output: 
-		bam = "results/{run}/bam/{sample}.for_bqsr.bam"
+		bam = temp("results/{run}/bam/{sample}.for_bqsr.bam")
 	params:
 		gatk = config['tools']['gatk'],
 		samtools = config['tools']['samtools']
 	log: 
 		log1 = "results/{run}/logs/prep/{sample}.dedup.log1",
 		log2 = "results/{run}/logs/prep/{sample}.dedup.log2"
-	shell: """
-		{params.gatk} MarkDuplicates \
-					-I {input.bam} -O {output.bam} -M {log.log1} 2>{log.log2} \
-					--ASSUME_SORTED true
-		{params.samtools} index {output.bam}"""
+	run: 
+		if config['hs']:
+			shell("""
+			{params.gatk} MarkDuplicates \
+						-I {input.bam} -O {output.bam} -M {log.log1} 2>{log.log2} \
+						--ASSUME_SORTED true
+						{params.samtools} index {output.bam}""")
+		else:
+			shell('cp {input.bam} {output.bam} && {params.samtools} index {output.bam}')
 
 rule r2_prepare_bqsr:
 	input: 
 		bam = rules.r2_mark_duplicates.output.bam
 	output: 
-		bqsr = "results/{run}/bam/{sample}.for_bqsr.recal.table"
+		bqsr = temp("results/{run}/bam/{sample}.for_bqsr.recal.table")
 	log: 
 		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params:
@@ -131,5 +141,7 @@ rule r2_bed_to_intervals:
 		intervals = "results/{run}/capture.intervals"
 	params:
 		picard_old = config['tools']['picard_old'],
-		ref_dict = config['references38']['dict'] if config['assembly'] == 'GRCh38' else config['references37']['dict'],
-	shell: "java -jar {params.picard_old} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals}"
+		ref_dict = config['references38']['dict'] if config['assembly'] == 'GRCh38' else config['references37']['dict']
+	log: 
+		'results/{run}/logs/prep/{sample}.intervals.log'
+	shell: "java -jar {params.picard_old} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"

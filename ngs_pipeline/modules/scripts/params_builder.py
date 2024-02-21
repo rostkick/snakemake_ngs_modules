@@ -132,8 +132,8 @@ class Mapping:
 class MappedGermTumor:
 	DISTANCE_THRESHOLD = 0.5
 	def __init__(self, grm: DataProcessor, tmr: DataProcessor):
-		distances = self.estimate_distances(grm, tmr)
-		self.mapping = self.map_names(distances)
+		self.distances = self.estimate_distances(grm, tmr)
+		self.mapping = self.map_names(self.distances)
 
 	def estimate_distances(self, grm: DataProcessor, tmr: DataProcessor) -> list:
 		distances = []
@@ -146,17 +146,25 @@ class MappedGermTumor:
 		df.columns = ['sample_grm', 'sample_tmr', 'distance']
 
 		df = df.sort_values('distance', ascending=False)
-		df_matched = df.loc[df['distance']>=self.DISTANCE_THRESHOLD, :]
-
+		max_dist = df['distance'].max()
+		df_matched = df.loc[df['distance']==max_dist, :].drop_duplicates()
+	
 		df_grm_unmatched = pd.DataFrame()
-		df_grm_unmatched.loc[:, 'sample_grm'] = df.loc[df['distance']<=self.DISTANCE_THRESHOLD, 'sample_grm'].drop_duplicates().dropna()
-		df_grm_unmatched.loc[:, 'sample_tmr'] = np.nan
-		df_grm_unmatched.loc[:, 'distance'] = np.nan
+		df_grm_unmatched.loc[:, 'sample_grm'] = df.loc[df['distance']<max_dist, 'sample_grm'].drop_duplicates().dropna()
+		grm_mask = ~df_grm_unmatched.loc[:, 'sample_grm'].isin(df_matched.loc[:, 'sample_grm'])
+		df_grm_unmatched = df_grm_unmatched.loc[grm_mask, :].dropna()
+
+		if df_grm_unmatched.size != 0:
+			df_grm_unmatched.loc[:, 'sample_tmr'] = np.nan
+			df_grm_unmatched.loc[:, 'distance'] = np.nan
 
 		df_tmr_unmatched = pd.DataFrame()
-		df_tmr_unmatched['sample_grm'] = np.nan
-		df_tmr_unmatched.loc[:, 'sample_tmr'] = df.loc[df['distance']<=self.DISTANCE_THRESHOLD, 'sample_tmr'].drop_duplicates().dropna()
-		df_tmr_unmatched.loc[:, 'distance'] = np.nan
+		df_tmr_unmatched.loc[:, 'sample_tmr'] = df.loc[df['distance']<=max_dist, 'sample_tmr'].drop_duplicates().dropna()
+		tmr_mask = ~df_tmr_unmatched.loc[:, 'sample_tmr'].isin(df_matched.loc[:, 'sample_tmr'])
+		df_tmr_unmatched = df_tmr_unmatched.loc[tmr_mask, :].dropna()
+		if df_grm_unmatched.size != 0:
+			df_tmr_unmatched.loc[:, 'distance'] = np.nan
+			df_tmr_unmatched['sample_grm'] = np.nan
 
 		df = pd.concat([df_matched, df_grm_unmatched, df_tmr_unmatched])
 		is_duplicated = df.apply(pd.Series.duplicated, axis=0)

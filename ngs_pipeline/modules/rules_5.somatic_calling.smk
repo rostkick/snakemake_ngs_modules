@@ -6,7 +6,7 @@ def get_somatic_input(wc, data):
 	sample_tumor = wc.patient + '_tmr'
 	inp['tumor'] = f'results/{wc.run}/bam/{sample_tumor}.final.bam'
 	if ngs.GRM:
-		sample_germline = wc.patient + '_tmr'
+		sample_germline = wc.patient + '_grm'
 		inp['germline'] = f'results/{wc.run}/bam/{sample_germline}.final.bam'
 	return inp
 

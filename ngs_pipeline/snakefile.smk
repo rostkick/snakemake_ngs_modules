@@ -1,13 +1,13 @@
 from modules.scripts.params_builder import *
 from modules.scripts.get_input import final_inputs
 
-configfile: 'configure.yml'
 
+configfile: 'configure.yml'
 
 ngs = NGSSetup()
 data = ngs.data
 
-ngs.data.to_csv('bla.tsv', sep='\t')
+ngs.data.to_csv('bla.tsv', sep='\t', index=False)
 
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
