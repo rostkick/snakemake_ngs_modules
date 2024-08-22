@@ -44,7 +44,6 @@ def get_merged_bams(wc):
 		line = ngs.data.loc[(ngs.data["sample"]==sample) & (ngs.data["lane"]==lane), 'fastq'].tolist()
 		if line:
 			result_output.append(f'results/{run}/bam/{sample}.{lane}.sam')
-	print(result_output)
 	return result_output
 
 rule r2_merge_bams:
@@ -57,9 +56,11 @@ rule r2_merge_bams:
 		samtools = config['tools']['samtools']
 	run:
 		if len(input.bams)>1:
+			print(f"{params.samtools} merge {output.bam} {input.bams}")
 			shell("{params.samtools} merge {output.bam} {input.bams}")
 		else:
-			shell("ln -s {output.bams} {input.bams}")
+			print(f"ln -s {input.bams} {output.bam}")
+			shell("cp {input.bams} {output.bam}")
 
 rule r2_sorting_bam:
 	input: 
@@ -91,7 +92,7 @@ rule r2_mark_duplicates:
 						--ASSUME_SORTED true
 						{params.samtools} index {output.bam}""")
 		else:
-			shell('cp {input.bam} {output.bam} && {params.samtools} index {output.bam}')
+			shell('ln -s {input.bam} {output.bam} && {params.samtools} index {output.bam}')
 
 rule r2_prepare_bqsr:
 	input: 
@@ -142,6 +143,5 @@ rule r2_bed_to_intervals:
 	params:
 		picard_old = config['tools']['picard_old'],
 		ref_dict = config['references38']['dict'] if config['assembly'] == 'GRCh38' else config['references37']['dict']
-	log: 
-		'results/{run}/logs/prep/{sample}.intervals.log'
+	log: 'results/{run}/logs/prep/intervals.log'
 	shell: "java -jar {params.picard_old} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
