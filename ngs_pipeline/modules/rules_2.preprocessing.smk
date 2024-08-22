@@ -1,4 +1,4 @@
-rule r2_sam_to_bam:
+rule r2_1_sam_to_bam:
 	input: 
 		sam = rules.r1_read_alignment.output.sam
 	output:
@@ -9,9 +9,9 @@ rule r2_sam_to_bam:
 		workflow.cores/(len(ngs.SAMPLES) * max(len(ngs.LANES), 1)) if config['ngs_type'] == 'WES' else workflow.cores/2
 	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
 
-rule r2_sort_premerged_bams:
+rule r2_2_sort_premerged_bams:
 	input: 
-		bam = rules.r2_sam_to_bam.output.bam
+		bam = rules.r2_1_sam_to_bam.output.bam
 	output: 
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	params:
@@ -43,12 +43,11 @@ def get_merged_bams(wc):
 	for run, sample, lane in product([config['run']], [wc.sample], ngs.LANES):
 		line = ngs.data.loc[(ngs.data["sample"]==sample) & (ngs.data["lane"]==lane), 'fastq'].tolist()
 		if line:
-			result_output.append(f'results/{run}/bam/{sample}.{lane}.sam')
+			result_output.append(f'results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	return result_output
 
-rule r2_merge_bams:
-	input: 
-		# bams = expand("results/{{run}}/bam/{{sample}}.{lane}.for_merge.bam", lane=ngs.LANES, allow_missing=False)
+rule r2_3_merge_bams:
+	input:
 		bams = get_merged_bams
 	output: 
 		bam = temp('results/{run}/bam/{sample}.for_sort2.bam')
@@ -62,9 +61,9 @@ rule r2_merge_bams:
 			print(f"ln -s {input.bams} {output.bam}")
 			shell("cp {input.bams} {output.bam}")
 
-rule r2_sorting_bam:
+rule r2_4_sorting_bam:
 	input: 
-		bam = rules.r2_merge_bams.output.bam
+		bam = rules.r2_3_merge_bams.output.bam
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
 	threads: 
@@ -73,9 +72,9 @@ rule r2_sorting_bam:
 		samtools = config['tools']['samtools']
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
 
-rule r2_mark_duplicates:
+rule r2_5_mark_duplicates:
 	input: 
-		bam = rules.r2_sorting_bam.output.bam
+		bam = rules.r2_4_sorting_bam.output.bam
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_bqsr.bam")
 	params:
@@ -94,9 +93,9 @@ rule r2_mark_duplicates:
 		else:
 			shell('ln -s {input.bam} {output.bam} && {params.samtools} index {output.bam}')
 
-rule r2_prepare_bqsr:
+rule r2_6_prepare_bqsr:
 	input: 
-		bam = rules.r2_mark_duplicates.output.bam
+		bam = rules.r2_5_mark_duplicates.output.bam
 	output: 
 		bqsr = temp("results/{run}/bam/{sample}.for_bqsr.recal.table")
 	log: 
@@ -115,10 +114,10 @@ rule r2_prepare_bqsr:
 				-L {params.wgs_calling_regions} \
 				-O {output} &>{log}"""
 
-rule r2_apply_bqsr:
+rule r2_7_apply_bqsr:
 	input: 
-		bam = rules.r2_mark_duplicates.output.bam,
-		bqsr = rules.r2_prepare_bqsr.output.bqsr
+		bam = rules.r2_5_mark_duplicates.output.bam,
+		bqsr = rules.r2_6_prepare_bqsr.output.bqsr
 	output: 
 		bam = "results/{run}/bam/{sample}.final.bam"
 	log: 
@@ -135,7 +134,7 @@ rule r2_apply_bqsr:
 				-bqsr {input.bqsr} \
 				-O {output} &>{log}"""
 
-rule r2_bed_to_intervals:
+rule r2_8_bed_to_intervals:
 	input: 
 		bed = config["panel_capture"]["target"]
 	output: 

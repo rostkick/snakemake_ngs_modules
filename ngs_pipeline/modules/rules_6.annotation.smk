@@ -1,6 +1,6 @@
-rule r9_vep_germline_joint:
+rule r6_1_vep_germline_joint:
 	input:
-		vcf = rules.r4_mergevcfs.output.vcf
+		vcf = rules.r4_8_mergevcfs.output.vcf
 	output:
 		vcf = 'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
 	params: 
@@ -41,29 +41,10 @@ rule r9_vep_germline_joint:
 				--fork {threads} 2>{log}
 			"""
 
-# use rule r9_vep_germline_joint as r9_vep_germline_sample with:
-# 	wildcard_constraints: 
-# 		sample = "|".join(ngs.GRM_SAMPLES)
-# 	input: 
-# 		vcf = rules.r4_deepvariant.output.vcf
-# 	output: 
-# 		vcf = "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
-# 	log: 
-# 		'results/{run}/logs/germline/{sample}.annotation.log'
-
-
-use rule r9_vep_germline_joint as r9_vep_somatic with:
+use rule r6_1_vep_germline_joint as r6_2_vep_somatic with:
 	input: 
-		vcf = rules.r6_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if (ngs.GRM & ngs.TMR) else rules.r7_filter_mutect_calls_tmr_only.output.vcf
+		vcf = rules.r5_8_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if (ngs.GRM & ngs.TMR) else rules.r5_11_filter_mutect_calls_tmr_only.output.vcf
 	output:
 		vcf = 'results/{run}/somatic/{patient}/annotated.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
-
-# use rule r9_vep_germline as r9_vep_sv_germline with:
-# 	input: 
-# 		vcf = 'results/{run}/germline/sv/results/variants/diploidSV.inv_converted.vcf.gz'
-# 	output: 
-# 		vcf = 'results/{run}/germline/sv/sv.annotated.vcf.gz'
-# 	log: 
-# 		'results/{run}/logs/germline/sv/annotation.log'

@@ -6,7 +6,7 @@ rule r1_read_alignment:
 		fr = lambda wc: ngs.data.loc[(ngs.data["sample"]==wc.sample) & (ngs.data["lane"]==wc.lane) & (ngs.data["reads_orientation"]=='R1'), 'fastq'].tolist(),
 		rr = lambda wc: ngs.data.loc[(ngs.data["sample"]==wc.sample) & (ngs.data["lane"]==wc.lane) & (ngs.data["reads_orientation"]=='R2'), 'fastq'].tolist()
 	output: 
-		sam = 'results/{run}/bam/{sample}.{lane}.sam'
+		sam = temp('results/{run}/bam/{sample}.{lane}.sam')
 	log: 
 		'results/{run}/logs/aligning/{sample}.{lane}.bwa_mem2.log'
 	params: 

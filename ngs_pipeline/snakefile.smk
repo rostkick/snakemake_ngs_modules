@@ -7,7 +7,7 @@ configfile: 'configure.yml'
 ngs = NGSSetup()
 data = ngs.data
 
-ngs.data.to_csv('bla.tsv', sep='\t', index=False)
+ngs.data.to_csv('run_table.tsv', sep='\t', index=False)
 
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
@@ -19,10 +19,6 @@ rule all:
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
 include: config["snakemake_modules"] + "rules_3.collect_metrics.smk"
-# include: config["snakemake_modules"] + "rules_4.germline_calling.deepvariant.smk"
 include: config["snakemake_modules"] + "rules_4.germline_calling.haplotypecaller.smk"
 include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
-include: config["snakemake_modules"] + "rules_6.somatic_calling.grm_vs_tmr.smk"
-include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
-# include: config["snakemake_modules"] + "rules_8.sv_calling.smk"
-include: config["snakemake_modules"] + "rules_9.annotation.smk"
+include: config["snakemake_modules"] + "rules_6.annotation.smk"
