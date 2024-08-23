@@ -7,11 +7,19 @@ configfile: 'configure.yml'
 ngs = NGSSetup()
 data = ngs.data
 
-ngs.data.to_csv('run_table.tsv', sep='\t', index=False)
+data.to_csv('run_table.tsv', sep='\t', index=False)
 
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
 	patient = "|".join(ngs.TMR_PATIENTS)
+
+# print(ngs.__dict__)
+# print(f'{ngs.GRM_SAMPLES=}')
+# print(f'{ngs.SAMPLES=}')
+# print(f'{ngs.GRM_VS_TMR_PATIENTS=}')
+# print(f'{ngs.TMR_SAMPLES=}')
+# print(f'{ngs.TMR_PATIENTS=}')
+# print(f'{ngs.ONLY_TMR_PATIENTS=}')
 
 rule all:
 	input: final_inputs(ngs)

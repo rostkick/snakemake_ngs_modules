@@ -174,6 +174,7 @@ class MappedGermTumor:
 		mapping.loc[:, 'sample_grm'] = mapping['sample_grm'] + '_grm'
 		mapping.loc[:, 'sample_tmr'] = mapping['sample_tmr'] + '_tmr'
 		mapping.loc[:, 'patient'] = mapping['sample_tmr'].str[:-4]
+		mapping['patient'].fillna(mapping['sample_grm'].str[:-4], inplace=True)
 		return mapping
 
 ##################################
@@ -214,7 +215,6 @@ class NGSJointPaired(NGS):
 		return MappedGermTumor(grm, tmr).mapping
 
 	def get_wide_df(self, mapping, grm, tmr):
-
 		mapping['sample'] = mapping['sample_grm'].str[:-4]
 		wide_df = pd.merge(mapping, grm.df, how='outer', left_on='patient', right_on='patient')
 		# wide_df = wide_df.drop('sample', axis=1)
@@ -274,6 +274,7 @@ class GermlineAndTumor:
 	def __init__(self):
 		self.SAMPLES = self.mapping['sample_grm'].dropna().unique().tolist() + self.mapping['sample_tmr'].dropna().unique().tolist()
 		self.TMR_PATIENTS = self.mapping['patient'].dropna().to_list()
+		self.TMR_PATIENTS = self.mapping.loc[~self.mapping['sample_tmr'].isna(), 'patient'].to_list()
 		self.GRM_VS_TMR_PATIENTS = self.mapping.query("~(sample_tmr.isnull() | sample_grm.isnull())")['patient'].to_list()
 		self.ONLY_TMR_PATIENTS =  self.mapping.query("sample_grm.isnull()")['patient'].to_list()
 
