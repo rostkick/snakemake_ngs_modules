@@ -13,6 +13,7 @@ wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
 	patient = "|".join(ngs.TMR_PATIENTS)
 
+# === for debugging ===
 # print(ngs.__dict__)
 # print(f'{ngs.GRM_SAMPLES=}')
 # print(f'{ngs.SAMPLES=}')
@@ -20,6 +21,7 @@ wildcard_constraints:
 # print(f'{ngs.TMR_SAMPLES=}')
 # print(f'{ngs.TMR_PATIENTS=}')
 # print(f'{ngs.ONLY_TMR_PATIENTS=}')
+# === for debugging ===
 
 rule all:
 	input: final_inputs(ngs)
@@ -28,5 +30,7 @@ include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
 include: config["snakemake_modules"] + "rules_3.collect_metrics.smk"
 include: config["snakemake_modules"] + "rules_4.germline_calling.haplotypecaller.smk"
-include: config["snakemake_modules"] + "rules_5.somatic_calling.smk"
-include: config["snakemake_modules"] + "rules_6.annotation.smk"
+include: config["snakemake_modules"] + "rules_5.somatic_calling.initial.smk"
+include: config["snakemake_modules"] + "rules_6.somatic_calling.paired.smk"
+include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
+include: config["snakemake_modules"] + "rules_8.annotation.smk"

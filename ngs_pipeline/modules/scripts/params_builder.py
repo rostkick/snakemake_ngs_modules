@@ -162,7 +162,8 @@ class MappedGermTumor:
 		df_tmr_unmatched.loc[:, 'sample_tmr'] = df.loc[df['distance']<=max_dist, 'sample_tmr'].drop_duplicates().dropna()
 		tmr_mask = ~df_tmr_unmatched.loc[:, 'sample_tmr'].isin(df_matched.loc[:, 'sample_tmr'])
 		df_tmr_unmatched = df_tmr_unmatched.loc[tmr_mask, :].dropna()
-		if df_grm_unmatched.size != 0:
+
+		if df_tmr_unmatched.size != 0:
 			df_tmr_unmatched.loc[:, 'distance'] = np.nan
 			df_tmr_unmatched['sample_grm'] = np.nan
 
@@ -283,6 +284,9 @@ class NGSSetup(Germline):#, Tumor, GermlineAndTumor):
 
 		self.GRM=config['grm_dir'] != ''
 		self.TMR=config['tmr_dir'] != ''
+
+		self.check_files()
+
 		self.PAIR=config['reads_type'] == 'pair'
 
 		self.GRM_SAMPLES = []
@@ -302,6 +306,23 @@ class NGSSetup(Germline):#, Tumor, GermlineAndTumor):
 			Tumor.__init__(self)
 		if self.GRM & self.TMR:
 			GermlineAndTumor.__init__(self)
+	
+	def check_files(self):
+		grm_dir = config['grm_dir']
+		if self.GRM:
+			files = list(chain(*[glob(grm_dir + '/' + ext) for ext in ['*.fastq', '*.fastq.gz', '*.fq', '*.fq.gz']]))
+			if len(files) == 0:
+				print(f"No reads files were found in germline directory {grm_dir}!")
+				self.GRM = False
+
+		tmr_dir = config['tmr_dir']
+		if self.TMR:
+			files = list(chain(*[glob(tmr_dir + '/' + ext) for ext in ['*.fastq', '*.fastq.gz', '*.fq', '*.fq.gz']]))
+			if len(files) == 0:
+				print(f"No reads files were found in tumor directory {tmr_dir}!")
+				self.TMR = False
+		if not (self.GRM | self.TMR):
+			raise FileNotFoundError(f"No files matching the pattern were found in both germline and tumor directories.")
 
 	def create_params(self) -> NGS:
 		if self.GRM and self.TMR and self.PAIR:

@@ -1,4 +1,4 @@
-rule r6_1_vep_germline_joint:
+rule r8_1_vep_germline_joint:
 	input:
 		vcf = rules.r4_8_mergevcfs.output.vcf
 	output:
@@ -41,22 +41,22 @@ rule r6_1_vep_germline_joint:
 				--fork {threads} 2>{log}
 			"""
 
-use rule r6_1_vep_germline_joint as r6_2_vep_somatic_grm_vs_tmr with:
+use rule r8_1_vep_germline_joint as r8_2_vep_somatic_paired with:
 	wildcard_constraints:
 		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
-		vcf = rules.r5_8_filter_pass_exclude_normal_grm_vs_tmr.output.vcf if (ngs.GRM & ngs.TMR) else rules.r5_11_filter_mutect_calls_tmr_only.output.vcf
+		vcf = rules.r6_5_filter_pass_exclude_normal_paired.output.vcf
 	output:
-		vcf = 'results/{run}/somatic/{patient}/annotated.vcf.gz'
+		vcf = 'results/{run}/somatic/{patient}/somatic_annotated.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 
-use rule r6_1_vep_germline_joint as r6_3_vep_somatic_tmr_only with:
+use rule r8_1_vep_germline_joint as r8_3_vep_somatic_tmr_only with:
 	wildcard_constraints:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input: 
-		vcf = rules.r5_11_filter_mutect_calls_tmr_only.output.vcf
+		vcf = rules.r7_3_filter_mutect_calls_tmr_only.output.vcf
 	output:
-		vcf = 'results/{run}/somatic/{patient}/annotated.vcf.gz'
+		vcf = 'results/{run}/somatic/{patient}/somatic_annotated_tonly.vcf.gz'
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
