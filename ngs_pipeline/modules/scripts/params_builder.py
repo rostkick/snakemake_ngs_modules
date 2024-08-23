@@ -130,8 +130,8 @@ class Mapping:
 		return mapping
 
 class MappedGermTumor:
-	DISTANCE_THRESHOLD = 0.5
 	def __init__(self, grm: DataProcessor, tmr: DataProcessor):
+		self.DISTANCE_THRESHOLD = 0.6
 		self.distances = self.estimate_distances(grm, tmr)
 		self.mapping = self.map_names(self.distances)
 
@@ -146,9 +146,9 @@ class MappedGermTumor:
 		df.columns = ['sample_grm', 'sample_tmr', 'distance']
 
 		df = df.sort_values('distance', ascending=False)
-		max_dist = df['distance'].max()
+		max_dist_current = df['distance'].max()
+		max_dist = max_dist_current if max_dist_current > self.DISTANCE_THRESHOLD else self.DISTANCE_THRESHOLD
 		df_matched = df.loc[df['distance']==max_dist, :].drop_duplicates()
-	
 		df_grm_unmatched = pd.DataFrame()
 		df_grm_unmatched.loc[:, 'sample_grm'] = df.loc[df['distance']<max_dist, 'sample_grm'].drop_duplicates().dropna()
 		grm_mask = ~df_grm_unmatched.loc[:, 'sample_grm'].isin(df_matched.loc[:, 'sample_grm'])

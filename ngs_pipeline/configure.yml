@@ -5,7 +5,6 @@ panel_capture:
   target: "data/capture.bed"
 
 run: 'wes_mb5'
-analysis_type: 'germline_and_somatic'
 ngs_type: 'WES'
 hs: true
 reads_type: 'pair'

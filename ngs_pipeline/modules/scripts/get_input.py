@@ -10,11 +10,8 @@ def final_inputs(ngs):
 		# somatic
 		if ngs.TMR:
 			somatic_inputs_grm_vs_tmr = [f'results/{run}/somatic/{patient}/somatic_annotated.vcf.gz' for run, patient in product([config['run']]\
-										,ngs.GRM_VS_TMR_PATIENTS)]
+										, ngs.GRM_VS_TMR_PATIENTS)]
 	
-	print(f'{ngs.TMR=}')
-	print(f'{ngs.GRM=}')
-	print(ngs.TMR & (not ngs.GRM))
 	if len(ngs.ONLY_TMR_PATIENTS) > 0:
 		somatic_inputs_tonly = [f'results/{run}/somatic/{patient}/somatic_annotated_tonly.vcf.gz' for run, patient in product([config['run']], ngs.ONLY_TMR_PATIENTS)]
 	
