@@ -2,7 +2,8 @@ from modules.scripts.params_builder import *
 from modules.scripts.get_input import final_inputs
 
 
-configfile: 'configure.yml'
+configfile: 'configure.solid_deps.yml' # will be merged with current settings configuration
+
 
 ngs = NGSSetup()
 data = ngs.data
