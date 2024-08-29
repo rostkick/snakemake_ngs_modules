@@ -1,9 +1,0 @@
-grm_dir: 'data/grm'
-tmr_dir: 'data/tmr'
-panel_capture:
-  target: "data/capture.bed"
-run: 'wes_mb5'
-ngs_type: 'WES'
-hs: true
-reads_type: 'pair'
-assembly: 'GRCh37'
