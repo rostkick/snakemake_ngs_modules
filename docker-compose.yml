@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  ngs.deps:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+  ngs.code:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - ngs.deps
+    volumes:
+      - ./data:/ngs_pipeline/app/data # Mount the 'data' directory from the host to the container
+      - ./results:/ngs_pipeline/app/results # Mount the 'results' directory from the host to the container
+      - /mnt/StudentsWork/skitchenko/ngs_refs:/ngs_pipeline/app/ngs_refs # Mount the 'references' directory from the host to the container
+    command: bash -c "ls app"
