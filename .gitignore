@@ -5,3 +5,7 @@ data
 *.tsv
 docker
 *.pdf
+deps/tools
+ngs_pipeline/Dockerfile.code
+test_data
+
