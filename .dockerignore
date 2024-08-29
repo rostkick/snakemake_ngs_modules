@@ -1,0 +1,5 @@
+ngs_pipeline/dag.pdf
+# ngs_pipeline/data
+ngs_pipeline/.snakemake
+ngs_pipeline/run_table.tsv
+ngs_pipeline/configure.run_settings.yml
