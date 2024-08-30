@@ -1,9 +1,0 @@
-name: py27
-channels:
-  - bioconda
-  - defaults
-  - conda-forge
-dependencies:
-  - manta=1.6.0=h9ee0642_1
-  - python=2.7.18=ha1903f6_2
-prefix: /mnt/tank/scratch/rskitchenko/anaconda3/envs/py27

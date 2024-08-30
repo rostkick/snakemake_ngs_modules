@@ -7,7 +7,7 @@ configfile: 'configure.solid_deps.yml' # will be merged with current settings co
 ngs = NGSSetup()
 data = ngs.data
 
-data.to_csv('run_table.tsv', sep='\t', index=False)
+data.to_csv('results/run_table.tsv', sep='\t', index=False)
 
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),

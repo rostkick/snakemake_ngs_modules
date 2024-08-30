@@ -75,7 +75,7 @@ FROM deps as code
 WORKDIR /ngs_pipeline
 
 # Копируем весь код проекта
-COPY ngs_pipeline ./app
+COPY ngs_pipeline app
 
 # Активируем окружение по умолчанию
 SHELL ["conda", "run", "-n", "smk", "/bin/bash", "-c"]

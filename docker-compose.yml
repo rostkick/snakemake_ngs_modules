@@ -13,7 +13,9 @@ services:
     depends_on:
       - ngs.deps
     volumes:
-      - ./data:/ngs_pipeline/app/data # Mount the 'data' directory from the host to the container
+      - /mnt/IMBG-Data-RAW/2024.02.15_SureSelectXT_CCP/Data/Intensities/BaseCalls/:/ngs_pipeline/app/data # Mount 'IMBG-Data-RAW' directory
+      # - ./data:/ngs_pipeline/app/data # Mount the 'data' directory from the host to the container
       - ./results:/ngs_pipeline/app/results # Mount the 'results' directory from the host to the container
       - /mnt/StudentsWork/skitchenko/ngs_refs:/ngs_pipeline/app/ngs_refs # Mount the 'references' directory from the host to the container
-    command: bash -c "ls app"
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 30 -c 30 --nolock"
+    # command: bash -c "cat /ngs_pipeline/app/data/grm/links/CP_626_L001_R1.fastq"
