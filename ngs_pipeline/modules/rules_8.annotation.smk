@@ -15,7 +15,7 @@ rule r8_1_vep_germline_joint:
 		'results/{run}/logs/germline/annotation.log'
 	threads: 
 		workflow.cores
-	shell: """{params.singularity} run -B /mnt:/mnt {params.vep} \
+	shell: """{params.singularity} run -B /ngs_pipeline:/ngs_pipeline {params.vep} \
 				/opt/vep/src/ensembl-vep/vep \
 				--cache \
 				--offline \
@@ -25,12 +25,19 @@ rule r8_1_vep_germline_joint:
 				--force \
 				--assembly {params.assembly} \
 				--af \
-				--af_gnomad \
+				--af_gnomade \
+				--af_gnomadg \
+				--af_1kg \
 				--max_af \
 				--hgvs \
 				--no_escape \
 				--canonical \
+				--protein \
+				--domains \
+				--humdiv \
 				--plugin MPC,{params.mpc_data} \
+				--plugin SpliceAI \
+				--pubmed \
 				--compress_output bgzip \
 				--use_given_ref \
 				--fasta {params.ref} \
@@ -41,7 +48,17 @@ rule r8_1_vep_germline_joint:
 				--fork {threads} 2>{log}
 			"""
 
-use rule r8_1_vep_germline_joint as r8_2_vep_somatic_paired with:
+use rule r8_1_vep_germline_joint as r8_2_vep_germline_individual with:
+	wildcard_constraints:
+		patient = "|".join(ngs.GRM_SAMPLES)
+	input: 
+		vcf = rules.r6_5_filter_pass_exclude_normal_paired.output.vcf
+	output:
+		vcf = "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
+	log: 
+		'results/{run}/logs/somatic/{patient}/annotation.log'
+
+use rule r8_1_vep_germline_joint as r8_3_vep_somatic_paired with:
 	wildcard_constraints:
 		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input: 
@@ -51,7 +68,7 @@ use rule r8_1_vep_germline_joint as r8_2_vep_somatic_paired with:
 	log: 
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 
-use rule r8_1_vep_germline_joint as r8_3_vep_somatic_tmr_only with:
+use rule r8_1_vep_germline_joint as r8_4_vep_somatic_tmr_only with:
 	wildcard_constraints:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input: 
