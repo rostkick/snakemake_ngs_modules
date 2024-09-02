@@ -49,6 +49,44 @@ FROM continuumio/miniconda3 as deps
 # Установка зависимостей в контейнере
 WORKDIR /ngs_pipeline
 
+# Deps for singularity
+RUN apt-get update && apt-get install -y \
+		build-essential \
+		libssl-dev \
+		uuid-dev \
+		libgpgme11-dev \
+		squashfs-tools \
+		libseccomp-dev \
+		gperf \
+		wget \
+		pkg-config \
+		git
+
+# go installation
+RUN cd /usr/local && \
+		wget https://golang.org/dl/go1.16.5.linux-amd64.tar.gz && \
+		rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
+
+# libseccomp installation - needed to compile singularity
+RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.1/libseccomp-2.5.1.tar.gz && \
+tar zxvf libseccomp-2.5.1.tar.gz && rm libseccomp-2.5.1.tar.gz && \
+cd libseccomp-2.5.1 && \
+./configure && make && make install && cd ~
+RUN apt update && apt-get upgrade -y && apt-get install libseccomp-dev -y
+ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig/:$PKG_CONFIG_PATH
+
+# singularity 
+RUN export VERSION=3.7.4 && \
+    wget https://github.com/sylabs/singularity/releases/download/v${VERSION}/singularity-${VERSION}.tar.gz && \
+    tar -xzf singularity-${VERSION}.tar.gz && rm singularity-${VERSION}.tar.gz
+
+RUN cd singularity && \
+    export PATH=$PATH:/usr/local/go/bin && \
+    /bin/bash -c "source ~/.profile" && \
+    ./mconfig && \ 
+    make BUILDTAGS="" -C ./builddir && \
+    make -C ./builddir install
+
 # Копируем файл с зависимостями и инструменты
 COPY deps/environment.yml .
 COPY deps/tools ./tools

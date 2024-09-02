@@ -2,7 +2,8 @@ rule r4_1_haplotypecaller:
 	input: 
 		bam = rules.r2_7_apply_bqsr.output.bam
 	output:
-		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz"
+		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz",
+		vcf = 
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
 	params:
 		gatk = config['tools']['gatk'],
@@ -16,7 +17,7 @@ rule r4_1_haplotypecaller:
 		-O {output.gvcf} \
 		-L {params.panel_capture} \
 		-ERC GVCF \
-		--native-pair-hmm-threads {threads} 2>{log} || true"""
+		--native-pair-hmm-threads {threads} 2>{log}"""
 
 rule r4_1_haplotypecaller_wgs:
 	input: 
