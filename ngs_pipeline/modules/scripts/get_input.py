@@ -6,7 +6,9 @@ def final_inputs(ngs):
 	germline_inputs, somatic_inputs_grm_vs_tmr, somatic_inputs_tonly, metrics = [], [], [], []
 
 	if ngs.GRM:
-		germline_inputs = germline_inputs + [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
+		germline_inputs_cohort = [f'results/{run}/germline/vcf/cohort.annotated.vcf.gz' for run in [config['run']]]
+		germline_inputs_individual = [f'results/{run}/germline/xlsx/individual.germline.results.xlsx' for run in [config['run']]]
+		germline_inputs = germline_inputs + germline_inputs_cohort + germline_inputs_individual
 		# somatic
 		if ngs.TMR:
 			somatic_inputs_grm_vs_tmr = [f'results/{run}/somatic/{patient}/somatic_annotated.vcf.gz' for run, patient in product([config['run']]\

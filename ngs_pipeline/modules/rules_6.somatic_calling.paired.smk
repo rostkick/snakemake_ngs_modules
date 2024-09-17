@@ -13,9 +13,9 @@ rule r6_1_mutect2_paired:
 	params:
 		gatk = config['tools']['gatk'],
 		sample_name = lambda wc: wc.patient + '_grm',
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		grm_res = config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
-		pon = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
+		ref = config['references']['genome_fa'],
+		grm_res = config['references']['af_only_gnomad'],
+		pon = config['references']['snps']
 	shell:
 		"""{params.gatk} Mutect2 \
 				-R {params.ref} \
@@ -68,7 +68,7 @@ rule r6_4_filter_mutect_calls_paired:
 		'results/{run}/logs/somatic/{patient}/FilterMutectCalls.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
+		ref = config['references']['genome_fa']
 	shell:"""
 			{params.gatk} FilterMutectCalls \
 				-R {params.ref} \

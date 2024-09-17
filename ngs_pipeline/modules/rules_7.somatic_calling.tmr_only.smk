@@ -14,9 +14,9 @@ rule r7_1_mutect2_tmr_only:
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		grm_res = config['references38']['af_only_gnomad'] if config['assembly'] == 'GRCh38' else config['references37']['af_only_gnomad'],
-		pon = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps']
+		ref = config['references']['genome_fa'],
+		grm_res = config['references']['af_only_gnomad'],
+		pon = config['references']['snps']
 	shell: """
 			{params.gatk} Mutect2 \
 				-R {params.ref} \

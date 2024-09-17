@@ -4,10 +4,16 @@ from modules.scripts.get_input import final_inputs
 configfile: 'data/configure.run_settings.yml'
 configfile: 'configure.solid_deps.yml' # will be merged with current settings configuration from 'configure.run_settings.yml'
 
+if config['assembly'] == 'GRCh38':
+	configfile: 'configure.references38.yml'
+elif config['assembly'] == 'GRCh37':
+	configfile: 'configure.references37.yml'
+
 ngs = NGSSetup()
 data = ngs.data
 
-data.to_csv('results/run_table.tsv', sep='\t', index=False)
+config['run']
+data.to_csv(f"results/{config['run']}/run_table.tsv", sep='\t', index=False)
 
 wildcard_constraints:
 	sample="|".join(ngs.SAMPLES),
@@ -29,7 +35,7 @@ rule all:
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
 include: config["snakemake_modules"] + "rules_3.collect_metrics.smk"
-include: config["snakemake_modules"] + "rules_4.germline_calling.haplotypecaller.smk"
+include: config["snakemake_modules"] + "rules_4.germline_calling.smk"
 include: config["snakemake_modules"] + "rules_5.somatic_calling.initial.smk"
 include: config["snakemake_modules"] + "rules_6.somatic_calling.paired.smk"
 include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"

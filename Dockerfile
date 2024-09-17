@@ -92,7 +92,7 @@ COPY deps/environment.yml .
 COPY deps/tools ./tools
 
 # Mamba
-RUN conda install conda-forge::libarchive
+RUN conda install --yes --solver=classic conda-forge::conda-libmamba-solver conda-forge::libmamba conda-forge::libmambapy conda-forge::libarchive
 RUN conda install --yes conda-forge::mamba
 
 # Создаем окружение из environment.yml

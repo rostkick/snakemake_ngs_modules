@@ -2,12 +2,11 @@ rule r4_1_haplotypecaller:
 	input: 
 		bam = rules.r2_7_apply_bqsr.output.bam
 	output:
-		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz",
-		vcf = 
+		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz"
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		ref = config['references']['genome_fa'],
 		panel_capture = config['panel_capture']['target']
 	threads: 8
 	shell: """{params.gatk} --java-options "-Xmx{threads}g -XX:ParallelGCThreads=1" \
@@ -27,7 +26,7 @@ rule r4_1_haplotypecaller_wgs:
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		ref = config['references']['genome_fa'],
 	threads: 8
 	shell: """{params.gatk} --java-options "-Xmx{threads}g -XX:ParallelGCThreads=1" \
 		HaplotypeCaller \
@@ -47,7 +46,7 @@ rule r4_2_combinegvcfs:
 	log: 'results/{run}/logs/germline/combinegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		ref = config['references']['genome_fa'],
 		gvcf=lambda wc, input: [f'--variant {i}' for i in input]
 	shell:"""{params.gatk} CombineGVCFs \
 		-R {params.ref} \
@@ -62,7 +61,7 @@ rule r4_3_genotypegvcfs:
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
-		fasta_reference=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
+		fasta_reference=config['references']['genome_fa'],
 		panel_capture = config['panel_capture']['target']
 	shell:"""{params.gatk} GenotypeGVCFs \
 		-R {params.fasta_reference} \
@@ -78,7 +77,7 @@ rule r4_3_genotypegvcfs_wgs:
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
-		fasta_reference=config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa']
+		fasta_reference=config['references']['genome_fa']
 	shell:"""{params.gatk} GenotypeGVCFs \
 		-R {params.fasta_reference} \
 		-V {input.gvcf} \
@@ -159,3 +158,27 @@ rule r4_8_mergevcfs:
 		-I {input.snps} \
 		-I {input.indels} \
 		-O {output.vcf} 2>{log}"""
+
+rule r4_9_deepvariant:
+	input: 
+		bam = rules.r2_7_apply_bqsr.output.bam
+	output: 
+		vcf = "results/{run}/germline/vcf/{sample}.vcf.gz",
+	log: 'results/{run}/logs/germline/{sample}.deepvariant.log'
+	params:
+		singularity = config['tools']['singularity'],
+		deepvariant = config['tools']['deepvariant'],
+		ngs_type = config['ngs_type'],
+		ref = config['references']['genome_fa'],
+		panel_capture = config['panel_capture']['target']
+	threads: 8
+	shell: """
+			{params.singularity} run \
+				-B /ngs_pipeline:/ngs_pipeline \
+				{params.deepvariant} /opt/deepvariant/bin/run_deepvariant \
+				--model_type={params.ngs_type} \
+				--output_vcf={output.vcf} \
+				--reads={input.bam} \
+				--ref={params.ref} \
+				--num_shards={threads} &>{log} || true"""
+				# --regions {params.panel_capture} \

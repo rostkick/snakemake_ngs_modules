@@ -102,10 +102,10 @@ rule r2_6_prepare_bqsr:
 		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		snps = config['references38']['snps'] if config['assembly'] == 'GRCh38' else config['references37']['snps'],
-		indels = config['references38']['indels'] if config['assembly'] == 'GRCh38' else config['references37']['indels'],
-		wgs_calling_regions = config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
+		ref = config['references']['genome_fa'],
+		snps = config['references']['snps'],
+		indels = config['references']['indels'],
+		wgs_calling_regions = config['references']['wgs_calling_regions']
 	shell: """{params.gatk} BaseRecalibrator \
 				-R {params.ref} \
 				-I {input.bam} \
@@ -124,8 +124,8 @@ rule r2_7_apply_bqsr:
 		'results/{run}/logs/prep/{sample}.bqsr_apply.log'
 	params:
 		gatk = config['tools']['gatk'],
-		ref = config['references38']['genome_fa'] if config['assembly'] == 'GRCh38' else config['references37']['genome_fa'],
-		wgs_calling_regions = config['references38']['wgs_calling_regions'] if config['assembly'] == 'GRCh38' else config['references37']['wgs_calling_regions']
+		ref = config['references']['genome_fa'],
+		wgs_calling_regions = config['references']['wgs_calling_regions']
 	threads: workflow.cores/len(ngs.SAMPLES)
 	shell: """{params.gatk} ApplyBQSR \
 				-R {params.ref} \
@@ -141,6 +141,6 @@ rule r2_8_bed_to_intervals:
 		intervals = "results/{run}/capture.intervals"
 	params:
 		picard_old = config['tools']['picard_old'],
-		ref_dict = config['references38']['dict'] if config['assembly'] == 'GRCh38' else config['references37']['dict']
+		ref_dict = config['references']['dict']
 	log: 'results/{run}/logs/prep/intervals.log'
 	shell: "java -jar {params.picard_old} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
