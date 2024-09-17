@@ -1,5 +1,7 @@
+import os
 from modules.scripts.params_builder import *
 from modules.scripts.get_input import final_inputs
+
 
 configfile: 'data/configure.run_settings.yml'
 configfile: 'configure.solid_deps.yml' # will be merged with current settings configuration from 'configure.run_settings.yml'
@@ -12,7 +14,9 @@ elif config['assembly'] == 'GRCh37':
 ngs = NGSSetup()
 data = ngs.data
 
-config['run']
+if not os.path.exists(f"results/{config['run']}"):
+    os.makedirs(f"results/{config['run']}")
+
 data.to_csv(f"results/{config['run']}/run_table.tsv", sep='\t', index=False)
 
 wildcard_constraints:
@@ -40,3 +44,4 @@ include: config["snakemake_modules"] + "rules_5.somatic_calling.initial.smk"
 include: config["snakemake_modules"] + "rules_6.somatic_calling.paired.smk"
 include: config["snakemake_modules"] + "rules_7.somatic_calling.tmr_only.smk"
 include: config["snakemake_modules"] + "rules_8.annotation.smk"
+include: config["snakemake_modules"] + "rules_9.parse_results.smk"

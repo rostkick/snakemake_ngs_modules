@@ -9,4 +9,3 @@ references:
   vep_plugins_data:
       CADD: "/ngs_pipeline/app/ngs_refs/VEP_plugins/whole_genome_SNVs.hg38.tsv.gz"
       AlphaMissense: "/ngs_pipeline/app/ngs_refs/VEP_plugins/AlphaMissense_hg38.tsv.gz"
-

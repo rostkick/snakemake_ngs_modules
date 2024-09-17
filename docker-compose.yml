@@ -13,17 +13,13 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - ngs.deps
-    user: "${UID}:${GID}"
     privileged: true
     volumes:
-      # - /mnt/IMBG-Data-RAW/2024.02.15_SureSelectXT_CCP/Data/Intensities/BaseCalls/:/ngs_pipeline/app/data # Mount 'IMBG-Data-RAW' directory
-      - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/
-      - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data
-      # - ./data:/ngs_pipeline/app/data # Mount the 'data' directory from the host to the container
-      - /home/students/snakemake_ngs_modules/results:/ngs_pipeline/app/results # Mount the 'results' directory from the host to the container
-      - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs # Mount the 'references' directory from the host to the container
-    # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 8 -c 8 --nolock -R r8_5_parse_vcf_individual"
-    command: bash -c "tail -f /dev/null"
+      - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/ # Mount the 'IMBG-Data-RAW' directory with real data,
+      - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data # ... links, capture and config,
+      - /home/students/snakemake_ngs_modules/results:/ngs_pipeline/app/results # ... 'results' directory,
+      - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs # ... 'references'.
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 8 -c 8 --nolock"
+    # command: bash -c "tail -f /dev/null"
     # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 8 -c 8 --nolock --dag | dot -Tpdf > results/dag.pdf"
     # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 8 -c 8 -n"
-    # command: bash -c "cat /ngs_pipeline/app/data/grm/links/CP_626_L001_R1.fastq"

@@ -15,4 +15,3 @@ tools:
     path: "/ngs_pipeline/tools/ensembl-vep_latest.sif"
     cache: "/ngs_pipeline/app/ngs_refs/vep_cache"
     plugins: "/ngs_pipeline/app/ngs_refs/VEP_plugins"
-
