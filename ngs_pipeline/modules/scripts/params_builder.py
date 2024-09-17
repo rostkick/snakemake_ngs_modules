@@ -19,11 +19,8 @@ class SeqDir:
 		"""
 		Initializes a SeqDir object with a given directory path.
 
-		Parameters:
-			dir_path (str): The path to the directory containing sequencing data.
-
-		Returns:
-			list: A list of sequencing data files in the specified directory.
+		Parameters:	dir_path (str): The path to the directory containing sequencing data.
+		Returns: list: A list of sequencing data files in the specified directory.
 		"""
 		dir_path = self.abs_seq_path(dir_path)
 		self.seqs = self.get_seq_list(dir_path)
@@ -66,11 +63,8 @@ class DataProcessor(metaclass=ABCMeta):
 		"""
 		Trims the sample names in the provided DataFrame.
 
-		Parameters:
-			df (pd.DataFrame): The DataFrame containing the sample names to be trimmed. Defaults to None.
-
-		Returns:
-			pd.DataFrame: The DataFrame with the trimmed sample names.
+		Parameters:	df (pd.DataFrame): The DataFrame containing the sample names to be trimmed. Defaults to None.
+		Returns: pd.DataFrame: The DataFrame with the trimmed sample names.
 		"""
 		if len(df['patient']) > 1:
 			series_list = df['patient'].str.split(r'_|\.|-')
@@ -105,11 +99,8 @@ class DataProcessorSingle(DataProcessor):
 		"""
 		Initializes a DataProcessorSingle instance.
 
-		Parameters:
-			path (str): The path to the fastq files.
-
-		Returns:
-			pd.DataFrame: A pandas DataFrame containing the processed data.
+		Parameters:	path (str): The path to the fastq files.
+		Returns: pd.DataFrame: A pandas DataFrame containing the processed data.
 		"""
 		fastq = self.extract_list(path)
 		df = super().convert_to_dataframe(fastq)
@@ -126,11 +117,8 @@ class DataProcessorSingle(DataProcessor):
 		"""
 		Extracts parameters from a pandas DataFrame containing fastq file information.
 
-		Parameters:
-			df (pd.DataFrame): A pandas DataFrame containing the fastq file information.
-
-		Returns:
-			pd.DataFrame: A pandas DataFrame containing the extracted parameters.
+		Parameters: df (pd.DataFrame): A pandas DataFrame containing the fastq file information.
+		Returns: pd.DataFrame: A pandas DataFrame containing the extracted parameters.
 		"""
 		df_extracted = df['base_fastq'].str.extractall(r'(?P<patient>.*)[_\-\.](?P<lane>[lL][\d]*)[_\-\.]?.*?').droplevel(1)
 		df_extracted['lane'] = df_extracted['lane'].fillna('L001')
@@ -146,11 +134,8 @@ class DataProcessorPaired(DataProcessorSingle):
 		"""
 		Initializes a DataProcessorPaired instance.
 
-		Parameters:
-			path (str): The path to the fastq files.
-
-		Returns:
-			pd.DataFrame: A pandas DataFrame containing the processed data.
+		Parameters:	path (str): The path to the fastq files.
+		Returns: pd.DataFrame: A pandas DataFrame containing the processed data.
 		"""
 		fastq = super().extract_list(path)
 		df = super().convert_to_dataframe(fastq)
@@ -175,12 +160,9 @@ class Mapping:
 		"""
 		Maps sample names in a DataFrame to create a new DataFrame with the sample names suffixed.
 
-		Parameters:
-			df (pd.DataFrame): The input DataFrame containing sample names.
-			suffix (str): The suffix to be added to the sample names.
+		Parameters:	df (pd.DataFrame): The input DataFrame containing sample names; suffix (str): The suffix to be added to the sample names.
 
-		Returns:
-			pd.DataFrame: A new DataFrame with the sample names suffixed and patient information.
+		Returns: pd.DataFrame: A new DataFrame with the sample names suffixed and patient information.
 		"""
 		mapping = pd.DataFrame()
 		mapping[f'sample{suffix}'] = df['sample'] + suffix
@@ -193,12 +175,8 @@ class MappedGermTumor:
 		"""
 		Initializes a MappedGermTumor object.
 		
-		Parameters:
-			grm (DataProcessor): The DataProcessor object for germ data.
-			tmr (DataProcessor): The DataProcessor object for tumor data.
-		
-		Returns:
-			None
+		Parameters:	grm (DataProcessor): The DataProcessor object for germ data; tmr (DataProcessor): The DataProcessor object for tumor data.
+		Returns: None
 		"""
 		self.DISTANCE_THRESHOLD = 0.6
 		self.distances = self.estimate_distances(grm, tmr)
@@ -208,12 +186,8 @@ class MappedGermTumor:
 		"""
 		Estimates the distances between patient samples in germ and tumor data.
 
-		Parameters:
-			grm (DataProcessor): The DataProcessor object for germ data.
-			tmr (DataProcessor): The DataProcessor object for tumor data.
-
-		Returns:
-			list: A list of tuples containing the patient samples from germ and tumor data, along with their distance ratio.
+		Parameters:	grm (DataProcessor): The DataProcessor object for germ data; tmr (DataProcessor): The DataProcessor object for tumor data.
+		Returns: list: A list of tuples containing the patient samples from germ and tumor data, along with their distance ratio.
 		"""
 		distances = []
 		for g, t in product(grm.df['patient'].tolist(), tmr.df['patient'].tolist()):
@@ -224,11 +198,8 @@ class MappedGermTumor:
 		"""
 		Maps the germ and tumor samples based on their distances.
 
-		Parameters:
-			mapping (list): A list of tuples containing the patient samples from germ and tumor data, along with their distance ratio.
-
-		Returns:
-			pd.DataFrame: A DataFrame containing the mapped samples with their corresponding patient IDs.
+		Parameters:	mapping (list): A list of tuples containing the patient samples from germ and tumor data, along with their distance ratio.
+		Returns: pd.DataFrame: A DataFrame containing the mapped samples with their corresponding patient IDs.
 		"""
 		df = pd.DataFrame(mapping)
 		df.columns = ['sample_grm', 'sample_tmr', 'distance']
@@ -273,11 +244,8 @@ class NGS(metaclass=ABCMeta):
 	"""
 	Initializes an abstract NGS class.
 	
-	Parameters:
-		None
-	
-	Returns:
-		None
+	Parameters:	None
+	Returns: None
 	"""
 	@abstractmethod
 	def __init__(self):
@@ -291,12 +259,8 @@ class NGSIndividualPaired(NGS):
 		"""
 		Initializes an instance of the NGSIndividualPaired class.
 
-		Parameters:
-			path (str): The path to the data.
-			suffix (str): The suffix to be added to the 'patient' column.
-
-		Returns:
-			None
+		Parameters:	path (str): The path to the data; suffix (str): The suffix to be added to the 'patient' column.
+		Returns: None
 		"""
 		self.mapping = pd.DataFrame()
 		self.data = self.get_data_processor(path)
@@ -314,12 +278,8 @@ class NGSJointPaired(NGS):
 		"""
 		Initializes an instance of the NGSJointPaired class.
 
-		Parameters:
-			grm_path (str): The path to the germline data.
-			tmr_path (str): The path to the tumor data.
-
-		Returns:
-			None
+		Parameters:	grm_path (str): The path to the germline data; tmr_path (str): The path to the tumor data.
+		Returns: None
 		"""
 		grm, tmr = self.get_data_processor(grm_path, tmr_path)
 		self.mapping = self.get_mapping(grm, tmr)
@@ -340,10 +300,8 @@ class NGSJointPaired(NGS):
 		Parameters:
 			mapping (pd.DataFrame): The mapping data.
 			grm (DataProcessor): The germline data processor.
-			tmr (DataProcessor): The tumor data processor.
-
-		Returns:
-			pd.DataFrame: The merged wide-format DataFrame.
+			tmr (DataProcessor): The tumor data processor. 
+		Returns: pd.DataFrame: The merged wide-format DataFrame.
 		"""
 		mapping['sample'] = mapping['sample_grm'].str[:-4]
 		wide_df = pd.merge(mapping, grm.df, how='outer', left_on='patient', right_on='patient')
@@ -358,11 +316,8 @@ class NGSJointPaired(NGS):
 		"""
 		Transforms a wide DataFrame into a long DataFrame format.
 		
-		Parameters:
-		wide_df (pd.DataFrame): The input DataFrame in wide format.
-		
-		Returns:
-		pd.DataFrame: The transformed DataFrame in long format.
+		Parameters:	wide_df (pd.DataFrame): The input DataFrame in wide format.
+		Returns: pd.DataFrame: The transformed DataFrame in long format.
 		"""
 		long_df = pd.DataFrame({
 		"sample": np.concatenate([wide_df.loc[:, 'sample_tmr'].values,
@@ -398,11 +353,8 @@ class Germline:
 		"""
 		Initializes a Germline object by extracting relevant sample information from the data.
 		
-		Parameters:
-			None
-		
-		Returns:
-			None
+		Parameters:	None
+		Returns: None
 		"""
 		self.SAMPLES = self.data.loc[:, 'sample'].dropna().unique().tolist()
 		self.GRM_SAMPLES = [i for i in self.SAMPLES if '_grm' in i]
@@ -413,11 +365,8 @@ class Tumor:
 		"""
 		Initializes a Tumor object by extracting relevant sample information from the data.
 
-		Parameters:
-			None
-
-		Returns:
-			None
+		Parameters:	None
+		Returns: None
 		"""
 		self.SAMPLES = self.data.loc[:, 'sample'].dropna().unique().tolist()
 		self.TMR_SAMPLES = [i for i in self.SAMPLES if '_tmr' in i]
@@ -434,11 +383,8 @@ class GermlineAndTumor:
 		It calculates the unique samples for GRM and TMR, and the corresponding patients.
 		It also calculates the patients that have both GRM and TMR samples, and the patients that only have TMR samples.
 
-		Parameters:
-			None
-
-		Returns:
-			None
+		Parameters: None
+		Returns: None
 		"""
 		self.SAMPLES = self.mapping['sample_grm'].dropna().unique().tolist() + self.mapping['sample_tmr'].dropna().unique().tolist()
 		self.TMR_PATIENTS = self.mapping['patient'].dropna().to_list()
@@ -455,11 +401,8 @@ class NGSSetup(Germline):#, Tumor, GermlineAndTumor):
 		Checks for the existence of files and sets up the data and mapping.
 		Initializes the Germline, Tumor, and GermlineAndTumor classes if applicable.
 
-		Parameters:
-			None
-
-		Returns:
-			None
+		Parameters:	None
+		Returns: None
 		"""
 		self.GRM=config['grm_dir'] != ''
 		self.TMR=config['tmr_dir'] != ''
@@ -506,9 +449,7 @@ class NGSSetup(Germline):#, Tumor, GermlineAndTumor):
 	def create_params(self) -> NGS:
 		"""
 		Create and return an instance of the NGS class based on the values of the attributes `GRM`, `TMR`, and `PAIR`.
-
-		:return: An instance of the NGS class.
-		:rtype: NGS
+		Return: An instance of the NGS class.
 		"""
 		if self.GRM and self.TMR and self.PAIR:
 			ngs = NGSJointPaired(config['grm_dir'], config['tmr_dir'])
