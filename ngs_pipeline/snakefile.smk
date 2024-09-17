@@ -1,6 +1,6 @@
 import os
 from modules.scripts.params_builder import *
-from modules.scripts.get_input import final_inputs
+from modules.scripts.get_input import get_final_inputs
 
 
 configfile: 'data/configure.run_settings.yml'
@@ -34,7 +34,7 @@ wildcard_constraints:
 # === for debugging ===
 
 rule all:
-	input: final_inputs(ngs)
+	input: get_final_inputs(ngs)
 
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"

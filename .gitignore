@@ -8,5 +8,6 @@ docker
 deps/tools
 ngs_pipeline/Dockerfile.code
 test_data
+data_bak
 results
 =*
