@@ -11,7 +11,11 @@ rule r8_1_vep_germline_joint:
 		cache = config['tools']['vep']['cache'],
 		plugins = config['tools']['vep']['plugins'],
 		cadd_data = config['references']['vep_plugins_data']['CADD'],
-		alpha_missense = config['references']['vep_plugins_data']['AlphaMissense']
+		alpha_missense = config['references']['vep_plugins_data']['AlphaMissense'],
+		exacpli = config['references']['vep_plugins_data']['ExACpLI'],
+		clinvar = config['references']['vep_plugins_data']['custom']['ClinVar'],
+		snpred = config['references']['vep_plugins_data']['custom']['SNPred'],
+		phenotypes = config['references']['vep_plugins_data']['Phenotypes']
 	log:
 		'results/{run}/logs/germline/annotation.log'
 	threads:
@@ -28,6 +32,7 @@ rule r8_1_vep_germline_joint:
 				--assembly {params.assembly} \
 				--af_gnomade \
 				--af_gnomadg \
+				--clin_sig_allele 1 \
 				--canonical \
 				--hgvs \
 				--hgvsg \
@@ -36,9 +41,13 @@ rule r8_1_vep_germline_joint:
 				--sift b \
 				--polyphen b \
 				--humdiv \
-				--domains \
+				--pubmed \
 				--plugin CADD,{params.cadd_data} \
 				--plugin AlphaMissense,file={params.alpha_missense} \
+				--plugin pLI,{params.exacpli} \
+				--plugin Phenotypes,file={params.phenotypes} \
+				--custom {params.clinvar},ClinVar,vcf,exact,0,CLINSIG,CLNDN \
+				--custom {params.snpred},SNPred,vcf,exact,0,SNPred_score \
 				--compress_output bgzip \
 				--use_given_ref \
 				--fasta {params.ref} \

@@ -1,6 +1,6 @@
 rule r2_1_sam_to_bam:
 	input: 
-		sam = rules.r1_read_alignment.output.sam
+		sam = rules.r1_1_read_alignment.output.sam
 	output:
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_sort1.bam')
 	params:

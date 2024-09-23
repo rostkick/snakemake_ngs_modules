@@ -13,7 +13,7 @@ def get_final_inputs(ngs):
 			f"results/{config['run']}/germline/vcf/cohort.annotated.vcf.gz"
 		]
 		germline_inputs_individual = [
-			f"results/{config['run']}/germline/xlsx/individual.germline.results.xlsx"
+			f"results/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
 		]
 		germline_inputs += germline_inputs_cohort + germline_inputs_individual
 		if ngs.TMR:

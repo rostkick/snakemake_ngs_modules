@@ -10,20 +10,24 @@ from difflib import SequenceMatcher
 from dataclasses import dataclass
 from snakemake.workflow import config
 
+from typing import List, Tuple
+
+
+pd.set_option('display.max_columns', None)
 
 #####################################
 # family of sequencing data classes #
 #####################################
 class SeqDir:
-	def __init__(self, dir_path: str) -> list:
-		dir_path = self.abs_seq_path(dir_path)
-		self.seqs = self.get_seq_list(dir_path)
+	def __init__(self, seq_dir: str):
+		self.seq_dir = os.path.abspath(seq_dir)
+		self.seqs = self.get_seq_list(self.seq_dir)
 
-	def abs_seq_path(self, dir_path: str) -> str:
-		return os.path.abspath(dir_path)
-
-	def get_seq_list(self, dir_path: str) -> list:
-		return list(chain(*[glob(dir_path + '/' + ext) for ext in ['*.fastq', '*.fastq.gz', '*.fq', '*.fq.gz']]))
+	def get_seq_list(self, directory_path: str) -> List[str]:
+		"""Return a list of sequence files in the given directory."""
+		sequence_extensions = ('*.fastq', '*.fastq.gz', '*.fq', '*.fq.gz')
+		sequence_files = (glob(os.path.join(directory_path, extension)) for extension in sequence_extensions)
+		return list(chain.from_iterable(sequence_files))
 
 class DataProcessor(metaclass=ABCMeta):
 	"""
@@ -46,87 +50,128 @@ class DataProcessor(metaclass=ABCMeta):
 	def create_link(self, df: pd.Series) -> pd.DataFrame:
 		pass
 
-	def convert_to_dataframe(self, fastq: list) -> pd.DataFrame:
-		df = pd.DataFrame({'fastq': fastq})
-		df['base_fastq'] = df['fastq'].apply(lambda x: os.path.basename(x))
-		df['dir_fastq'] = df['fastq'].apply(lambda x: os.path.dirname(x)+'/')
-		df['link_dir'] = df['dir_fastq']+ "links/"
+	def convert_to_dataframe(self, fastq_list: List[str]) -> pd.DataFrame:
+		"""Convert a list of fastq files to a pandas DataFrame."""
+		df = pd.DataFrame({'fastq': fastq_list})
+		df['base_fastq'] = df['fastq'].apply(os.path.basename)
+		df['dir_fastq'] = df['fastq'].apply(os.path.dirname) + '/'
+		df['link_dir'] = df['dir_fastq'] + 'links/'
 		return df
 
-	def trim_sample_name(self, df=None) -> pd.DataFrame:
-		if len(df['patient']) > 1:
-			series_list = df['patient'].str.split(r'_|\.|-')
-			i=0
-			condition = '_'.join(series_list[0][:i]) == '_'.join(series_list[len(series_list)-1][:i])
-			while condition:
-				substr_set = set(series_list.str[:i].str.join('_').tolist())
-				if len(substr_set) == len(set(df['patient'].tolist())):
+	def trim_sample_name(self, df: pd.DataFrame) -> pd.DataFrame:
+		df['full_name'] = df['patient']
+		"""Trim the sample names to a common prefix for all samples."""
+		if len(df["patient"].unique()) > 1:
+			prefix_lengths = []
+			for prefix_length in range(1, len(df["patient"].iloc[0]) + 1):
+				prefixes = df["patient"].str[:prefix_length]
+				if len(prefixes.unique()) == len(df["patient"].unique()):
+					prefix_lengths.append(prefix_length)
 					break
-				i+=1
-			df['patient'] = series_list.str[:i].str.join('_')
-		else:
-			df['patient'] = df['patient'].str.extract('(.+?)[_\-\.\|].*')[0]
+			df["patient"] = df["patient"].str.replace("[\-\.\|]", "_", regex=True)
+			df["patient"] = df["patient"].str[:prefix_lengths[-1]]
 		return df
 
-	def write_link(self, df: pd.DataFrame) -> pd.DataFrame:
-		fastq = df['fastq'].tolist()
-		link_dir = df['link_dir'].tolist()
-		links = df['link_name'].tolist()
-		link_dir = df['link_dir']
-	
-		for fq, link_d, link in zip(fastq, link_dir, links):
-			sp.run(f'mkdir -p {link_d}', shell=True)
-			sp.run(f'ln -fs {fq} {link}', shell=True)
+	def write_links(self, df: pd.DataFrame) -> pd.DataFrame:
+		"""Write links from input fastq files to a new location."""
+		for _, row in df.iterrows():
+			source_file = row['fastq']
+			link_directory = row['link_dir']
+			link_filename = row['link_name']
 
+			# Create the link directory if it doesn't exist
+			os.makedirs(link_directory, exist_ok=True)
+			if not os.path.exists(link_filename):
+				# Create the link
+				os.symlink(source_file, link_filename)
+
+		# Drop columns that are no longer needed
 		df = df.drop(['fastq', 'base_fastq', 'dir_fastq', 'link_dir'], axis=1)
+
+		# Rename the link_name column to fastq
 		df = df.rename({'link_name': 'fastq'}, axis=1)
+
 		return df
 
 class DataProcessorSingle(DataProcessor):
-	def __init__(self, path:str) -> pd.DataFrame:
-		fastq = self.extract_list(path)
-		df = super().convert_to_dataframe(fastq)
+	def __init__(self, path: str) -> pd.DataFrame:
+		"""
+		Initialize DataProcessorSingle with a path to a fastq file.
+
+		Args:
+			path (str): Path to the fastq file.
+
+		Returns:
+			pd.DataFrame: A pandas DataFrame containing the sample information.
+		"""
+		fastqs = self.extract_list(path)
+		df = super().convert_to_dataframe(fastqs)
 		df = self.extract_params(df)
 		df = super().trim_sample_name(df)
 		df = self.create_link(df)
-		self.df = super().write_link(df)
+		self.df = super().write_links(df)
 
-	def extract_list(self, path: str) -> list:
-		seq = SeqDir(path)
-		return seq.seqs
+	def extract_list(self, path: str) -> List[str]:
+		"""Extract a list of fastq files from a given directory."""
+		seq_dir = SeqDir(path)
+		return seq_dir.seqs
 
 	def extract_params(self, df: pd.DataFrame) -> pd.DataFrame:
-		df_extracted = df['base_fastq'].str.extractall(r'(?P<patient>.*)[_\-\.](?P<lane>[lL][\d]*)[_\-\.]?.*?').droplevel(1)
-		df_extracted['lane'] = df_extracted['lane'].fillna('L001')
-		df = pd.concat([df, df_extracted], axis=1)
-		return df
+		"""Extract patient and lane information from the base_fastq column."""
+		extracted = (
+			df['base_fastq']
+			.str.extractall(r'(?P<patient>.+?)[_\-.](?P<lane>[lL][\d]*)[_\-\.]?.*?')
+			.droplevel(1)
+		)
+
+		extracted['lane'] = extracted['lane'].fillna('L001')
+		return pd.concat([df, extracted], axis=1)
 
 	def create_link(self, df: pd.DataFrame) -> pd.DataFrame:
-		df['link_name'] = df['link_dir']+df['patient'] + '_' + df['lane'] + '_' + '.fastq'
+		"""Create a 'link_name' column with the path to the link for each fastq file."""
+		df["link_name"] = df["link_dir"] + df["patient"] + "_" + df["lane"] + ".fastq"
 		return df
 
 class DataProcessorPaired(DataProcessorSingle):
 	def __init__(self, path: str) -> pd.DataFrame:
-		fastq = super().extract_list(path)
-		df = super().convert_to_dataframe(fastq)
+		"""
+		Initialize DataProcessorPaired with a path to a directory containing fastq files.
+
+		Args:
+			path (str): Path to the directory.
+
+		Returns:
+			pd.DataFrame: A pandas DataFrame containing sample information.
+		"""
+		fastqs = self.extract_list(path)
+		df = super().convert_to_dataframe(fastqs)
 		df = self.extract_params(df)
 		df = super().trim_sample_name(df)
 		df = self.create_link(df)
-		self.df = super().write_link(df)
+		self.df = super().write_links(df)
 
 	def extract_params(self, df: pd.DataFrame) -> pd.DataFrame:
-		df_extracted = df['base_fastq'].str.extractall(r'(?P<patient>.+?)[_\-\.](?P<lane>[lL][0-9M]*)?[_\-\.]?(?P<reads_orientation>[Rr][12])[_\-\.]?.*?').droplevel(1)
-		df_extracted['lane'] = df_extracted['lane'].fillna('L001')
-		df = pd.concat([df, df_extracted], axis=1)
-		return df
+		"""
+		Extract patient and lane information from the base_fastq column.
+		"""
+		extracted = (
+			df['base_fastq']
+			.str.extractall(r'(?P<patient>.+?)[_\-\.](?P<lane>[lL][0-9M]*)?[_\-\.]?(?P<reads_orientation>[Rr][12])[_\-\.]?.*?')
+			.droplevel(1)
+		)
+
+		extracted['lane'] = extracted['lane'].fillna('L001')
+		return pd.concat([df, extracted], axis=1)
 	
 	def create_link(self, df: pd.DataFrame) -> pd.DataFrame:
-		df['link_name'] = df['link_dir']+df['patient'] + '_' + df['lane'] + '_' + df['reads_orientation'] + '.fastq'
+		"""Create a 'link_name' column with the path to the link for each fastq file."""
+		df['link_name'] = df['link_dir'] + df['patient'] + '_' + df['lane'] + '_' + df['reads_orientation'] + '.fastq'
 		return df
 
 class Mapping:
 	@staticmethod
 	def map_names(df, suffix) -> pd.DataFrame:
+		"""Map a dataframe to a new dataframe with the sample names	appended with the given suffix."""
 		mapping = pd.DataFrame()
 		mapping[f'sample{suffix}'] = df['sample'] + suffix
 		mapping.loc[:, 'patient'] = df['sample']
@@ -139,13 +184,26 @@ class MappedGermTumor:
 		self.distances = self.estimate_distances(grm, tmr)
 		self.mapping = self.map_names(self.distances)
 
-	def estimate_distances(self, grm: DataProcessor, tmr: DataProcessor) -> list:
+	def estimate_distances(self, grm: DataProcessor, tmr: DataProcessor) -> List[Tuple[float, float]]:
+		"""Estimates the distances between patients in two datasets, returning a list of tuples containing patient pairs and their sequence similarity ratios."""
 		distances = []
-		for g, t in product(grm.df['patient'].tolist(), tmr.df['patient'].tolist()):
-			distances.append((g, t, SequenceMatcher(None, g, t).ratio()))
+		germ_patients = grm.df['patient'].tolist()
+		tmr_patients = tmr.df['patient'].tolist()
+		for gp in germ_patients:
+			for tp in tmr_patients:
+				distances.append((gp, tp, SequenceMatcher(None, gp, tp).ratio()))
 		return distances
 
 	def map_names(self, mapping: list) -> pd.DataFrame:
+		"""
+		Maps the distances between patients in two datasets, returning a dataframe with the matched and unmatched samples.
+		
+		Parameters:
+		mapping (list): A list of tuples containing patient pairs and their sequence similarity ratios.
+		
+		Returns:
+		pd.DataFrame: A dataframe with the matched and unmatched samples, including their sample names and patient IDs.
+		"""
 		df = pd.DataFrame(mapping)
 		df.columns = ['sample_grm', 'sample_tmr', 'distance']
 
@@ -346,4 +404,3 @@ class NGSSetup(Germline):#, Tumor, GermlineAndTumor):
 			return Mapping.map_names(ngs.data, '_tmr')
 		else:
 			return ngs.mapping
-

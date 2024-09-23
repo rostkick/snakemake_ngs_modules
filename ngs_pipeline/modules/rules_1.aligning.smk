@@ -1,4 +1,4 @@
-rule r1_read_alignment:
+rule r1_1_read_alignment:
 	wildcard_constraints:
 		sample='[\w\d]+',
 		lane='[lL0-9M]+'

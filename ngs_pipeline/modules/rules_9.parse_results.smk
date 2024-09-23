@@ -11,14 +11,16 @@ rule r9_1_parse_vcf_individual:
 'Chr\\tRef\\tAlt\\tRefGene\\tExon\\tHGVS_description\\tZyg\\t\
 rsID\\tGATK_FILTER\\tConsequence\\tConsequence_AA\\t\
 gnomAD_exome_NFE\\tgnomAD_exome_Comb\\tgnomAD_genome_NFE\\tgnomAD_genome_Comb\\t\
-CADD_PHRED\\tCADD_RAW\\tSIFT\\tPolyPhen\\tBIOTYPE\\tCANONICAL\\t\
-am_class\\tam_pathogenicity\\tCoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}; \
+CADD_PHRED\\tCADD_RAW\\tClinVar_CLNSIG\\tSIFT\\tPolyPhen\\tExAC_pLI\\tPUBMED\\t\
+ClinVar_publications\\tClinVar_CLNDN\\tBIOTYPE\\tCANONICAL\\tPHENOTYPES\\t\
+am_class\\tam_pathogenicity\\tSNPred_score\\tCoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}; \
 {params.bcftools} +split-vep -s primary -d -f \
 '%CHROM:%POS\\t%REF\\t%ALT\\t%SYMBOL\\t%EXON\\t%SYMBOL;%HGVSg;%HGVSc;%HGVSp\\t[%GT]\\t\
 %Existing_variation\\t%FILTER\\t%Consequence\\t%Amino_acids\\t\
 %gnomADe_NFE_AF\\t%gnomADe_AF\\t%gnomADg_NFE_AF\\t%gnomADg_AF\\t\
-%CADD_PHRED\\t%CADD_RAW\\t%SIFT\\t%PolyPhen\\t%BIOTYPE\\t%CANONICAL\\t\
-%am_class\\t%am_pathogenicity\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} >> {output.tsv}"""
+%CADD_PHRED\\t%CADD_RAW\\t%CLIN_SIG\\t%SIFT\\t%PolyPhen\\t%pLI_gene_value\\t%PUBMED\\t\
+%ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
+%am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} >> {output.tsv}"""
 
 rule r9_2_filter_tsv_individual:
 	wildcard_constraints:
@@ -27,7 +29,9 @@ rule r9_2_filter_tsv_individual:
 		tsv = rules.r9_1_parse_vcf_individual.output.tsv
 	output:
 		tsv = "results/{run}/germline/tsv/{sample}.tsv"
-	script: "scripts/filter_ind_table.py"
+	params:
+		mart = config['references']['vep_plugins_data']['custom']['mart']
+	script: "scripts/parse_annotation.py"
 
 def get_input_files(wildcards):
 	samples = ngs.GRM_SAMPLES
@@ -37,7 +41,8 @@ rule r9_3_merge_tsv_to_xlsx:
 	input:
 		tsv = expand("results/{run}/germline/tsv/{sample}.tsv", run=config['run'], sample=ngs.GRM_SAMPLES)
 	output:
-		xlsx = "results/{run}/germline/xlsx/individual.germline.results.xlsx"
-
+		xlsx = "results/{run}/germline/xlsx/individual.{run}.germline.results.xlsx"
+	params:
+		tsv = "results/{run}/run_table.tsv"
 	script:
 		"scripts/collect_tsv_to_xml.py"

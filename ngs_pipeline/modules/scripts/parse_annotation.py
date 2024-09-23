@@ -2,11 +2,21 @@ import pandas as pd
 
 
 input_file = snakemake.input.tsv
+mart_file = snakemake.params.mart
 output_file = snakemake.output.tsv
 
-# Get only protein coding
+
 df = pd.read_csv(input_file, sep='\t')
+df_mart = pd.read_csv(mart_file, sep='\t')
+
+# Get only protein coding
 df = df[df['BIOTYPE'] == 'protein_coding']
+
+gnomad_cols = [col for col in df.columns if 'gnomAD' in col]
+df[gnomad_cols] = df[gnomad_cols].replace('.', 0)
+df[gnomad_cols] = df[gnomad_cols].astype(float)
+
+df = pd.merge(df, df_mart, left_on='RefGene', right_on='HGNC symbol', how='left')
 
 # DP/GQ Filter
 df['CoverageDepth'] = pd.to_numeric(df['CoverageDepth'])
@@ -15,7 +25,7 @@ df.loc[df['CoverageDepth'] < 10, 'GATK_FILTER'] = 'DP'
 df.loc[df['GenotypeQual'] < 20, 'GATK_FILTER'] = 'GQ'
 
 # AlleleBalance Filter
-df[['AD1', 'AD2']] = df['AlleleDepth'].str.split(',', expand=True)
+df[['AD1', 'AD2']] = df['AlleleDepth'].str.split(',', expand=True).iloc[:,:2]
 df['AD1'] = pd.to_numeric(df['AD1'])
 df['AD2'] = pd.to_numeric(df['AD2'])
 df['AlleleBalance'] = df['AD1'] / (df['AD1'] + df['AD2'])
@@ -76,6 +86,9 @@ df['Consequence_severity'] = df['Consequence'].map(consequence_order)
 df = df.sort_values('Consequence_severity', ascending=False).drop_duplicates(subset='Chr', keep='first')
 
 # Drop unwanted columns from resulting table
-df.drop(['AD1', 'AD2', 'AlleleBalance', 'Consequence_severity'], axis=1, inplace=True)
+df.drop(['AD1', 'AD2', 'AlleleBalance', 'Consequence_severity',
+		 'HGNC symbol', 'NCBI gene (formerly Entrezgene) ID',
+		 'Gene name', 'BIOTYPE', 'CANONICAL', 'Gene stable ID',
+		 'GATK_FILTER'], axis=1, inplace=True)
 
 df.to_csv(output_file, index=False, sep='\t')
