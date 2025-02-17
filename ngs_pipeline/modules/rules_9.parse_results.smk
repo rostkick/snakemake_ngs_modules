@@ -20,7 +20,7 @@ am_class\\tam_pathogenicity\\tSNPred_score\\tCoverageDepth\\tGenotypeQual\\tAlle
 %gnomADe_NFE_AF\\t%gnomADe_AF\\t%gnomADg_NFE_AF\\t%gnomADg_AF\\t\
 %CADD_PHRED\\t%CADD_RAW\\t%CLIN_SIG\\t%SIFT\\t%PolyPhen\\t%pLI_gene_value\\t%PUBMED\\t\
 %ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
-%am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} >> {output.tsv}"""
+%am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} | tr -cd '\\11\\12\\15\\40-\\176\\n' >> {output.tsv}"""
 
 rule r9_2_filter_tsv_individual:
 	wildcard_constraints:
@@ -31,6 +31,8 @@ rule r9_2_filter_tsv_individual:
 		tsv = "results/{run}/germline/tsv/{sample}.tsv"
 	params:
 		mart = config['references']['vep_plugins_data']['custom']['mart']
+	log:
+		'results/{run}/logs/parse_results/{sample}.tsv2xlsx.log'
 	script: "scripts/parse_annotation.py"
 
 def get_input_files(wildcards):
@@ -44,5 +46,7 @@ rule r9_3_merge_tsv_to_xlsx:
 		xlsx = "results/{run}/germline/xlsx/individual.{run}.germline.results.xlsx"
 	params:
 		tsv = "results/{run}/run_table.tsv"
+	log:
+		'results/{run}/logs/parse_results/tsv2xlsx.log'
 	script:
 		"scripts/collect_tsv_to_xml.py"

@@ -81,7 +81,7 @@ class DataProcessor(metaclass=ABCMeta):
 
 			# Create the link directory if it doesn't exist
 			os.makedirs(link_directory, exist_ok=True)
-			if not os.path.exists(link_filename):
+			if not os.path.lexists(link_filename):
 				# Create the link
 				os.symlink(source_file, link_filename)
 
