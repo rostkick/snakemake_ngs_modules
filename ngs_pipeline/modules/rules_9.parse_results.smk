@@ -4,7 +4,7 @@ rule r9_1_parse_vcf_individual:
 	input: 
 		vcf = rules.r8_2_vep_germline_individual.output.vcf
 	output:
-		tsv = temp("results/{run}/germline/tsv/{sample}.unfiltered.tsv")
+		tsv = "results/{run}/germline/tsv/{sample}.unfiltered.tsv"
 	params:
 		bcftools = config['tools']['bcftools'],
 	shell: """echo -e \
@@ -20,20 +20,21 @@ am_class\\tam_pathogenicity\\tSNPred_score\\tCoverageDepth\\tGenotypeQual\\tAlle
 %gnomADe_NFE_AF\\t%gnomADe_AF\\t%gnomADg_NFE_AF\\t%gnomADg_AF\\t\
 %CADD_PHRED\\t%CADD_RAW\\t%CLIN_SIG\\t%SIFT\\t%PolyPhen\\t%pLI_gene_value\\t%PUBMED\\t\
 %ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
-%am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} | tr -cd '\\11\\12\\15\\40-\\176\\n' >> {output.tsv}"""
+%am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} >> {output.tsv}"""
 
 rule r9_2_filter_tsv_individual:
 	wildcard_constraints:
-		patient = "|".join(ngs.GRM_SAMPLES)
+		sample = "|".join(ngs.GRM_SAMPLES)
 	input: 
 		tsv = rules.r9_1_parse_vcf_individual.output.tsv
 	output:
 		tsv = "results/{run}/germline/tsv/{sample}.tsv"
 	params:
-		mart = config['references']['vep_plugins_data']['custom']['mart']
+		mart = config['references']['vep_plugins_data']['custom']['mart'],
+		rank = config['references']['vep_plugins_data']['custom']['rank']
 	log:
 		'results/{run}/logs/parse_results/{sample}.tsv2xlsx.log'
-	script: "scripts/parse_annotation.py"
+	script: "scripts/postprocess.py"
 
 def get_input_files(wildcards):
 	samples = ngs.GRM_SAMPLES
