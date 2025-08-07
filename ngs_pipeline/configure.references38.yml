@@ -10,9 +10,10 @@ references:
       CADD: "/ngs_pipeline/app/ngs_refs/VEP_plugins/whole_genome_SNVs.hg38.tsv.gz"
       AlphaMissense: "/ngs_pipeline/app/ngs_refs/VEP_plugins/AlphaMissense_hg38.tsv.gz"
       ExACpLI: "/ngs_pipeline/app/ngs_refs/VEP_plugins/plI_gene.txt"
-      Phenotypes: "/ngs_pipeline/app/ngs_refs/VEP_plugins/Phenotypes.pm_homo_sapiens_108_GRCh38.gvf.gz"
+      Phenotypes: "/ngs_pipeline/app/ngs_refs/VEP_plugins/Phenotypes.pm_homo_sapiens_108_GRCh38.normilized.gvf.gz"
       custom:
           ClinVar: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/clinvar.vcf.gz"
           mart: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/mart_export.tsv"
           SNPred: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/SNPred_scores.vcf.gz"
+          rank: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/gse71613_ranking.tsv"
           # Orphanet: '/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/orphadata.bed.gz'

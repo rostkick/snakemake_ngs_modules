@@ -31,7 +31,10 @@ rule r9_2_filter_tsv_individual:
 		tsv = "results/{run}/germline/tsv/{sample}.tsv"
 	params:
 		mart = config['references']['vep_plugins_data']['custom']['mart'],
-		rank = config['references']['vep_plugins_data']['custom']['rank']
+		rank = config['references']['vep_plugins_data']['custom']['rank'],
+		gnomad_filter = config.get('filters', {}).get('gnomad', {}).get('enabled', False),
+		gnomad_af_threshold = config.get('filters', {}).get('gnomad', {}).get('af_threshold', 0.01),
+		gnomad_column = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE')
 	log:
 		'results/{run}/logs/parse_results/{sample}.tsv2xlsx.log'
 	script: "scripts/postprocess.py"

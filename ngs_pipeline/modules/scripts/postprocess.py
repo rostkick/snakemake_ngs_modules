@@ -10,6 +10,11 @@ mart_file = snakemake.params.mart
 rank_file = snakemake.params.rank
 output_file = snakemake.output.tsv
 
+# Optional gnomAD filtering parameters
+gnomad_filter_enabled = snakemake.params.get('gnomad_filter', False)
+gnomad_af_threshold = snakemake.params.get('gnomad_af_threshold', 0.01)  # Default 1%
+gnomad_column = snakemake.params.get('gnomad_column', 'gnomAD_exome_NFE')
+
 
 def clean_text(text):
     """Clean text by replacing problematic characters"""
@@ -109,6 +114,24 @@ def main():
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
         df.loc[df['GenotypeQual'] < 20, 'GATK_FILTER'] = 'GQ'
+
+    # gnomAD frequency filter (optional)
+    if gnomad_filter_enabled and gnomad_column in df.columns:
+        print(f"Applying gnomAD frequency filter: {gnomad_column} > {gnomad_af_threshold}")
+        
+        # Convert gnomAD column to numeric if not already done
+        df[gnomad_column] = pd.to_numeric(df[gnomad_column], errors='coerce').fillna(0)
+        
+        # Filter variants with frequency above threshold
+        gnomad_mask = df[gnomad_column] > gnomad_af_threshold
+        df.loc[gnomad_mask & (df['GATK_FILTER'] == 'PASS'), 'GATK_FILTER'] = 'gnomAD_AF'
+        
+        gnomad_filtered = len(df[df['GATK_FILTER'] == 'gnomAD_AF'])
+        print(f"gnomAD frequency filter: {gnomad_filtered} variants filtered (AF > {gnomad_af_threshold})")
+    elif gnomad_filter_enabled and gnomad_column not in df.columns:
+        print(f"Warning: gnomAD filter enabled but column '{gnomad_column}' not found in data")
+    else:
+        print("gnomAD frequency filter: disabled")
 
     # AlleleBalance Filter
     if 'AlleleDepth' in df.columns:
