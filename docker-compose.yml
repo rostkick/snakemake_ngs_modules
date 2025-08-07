@@ -16,10 +16,8 @@ services:
     privileged: true
     volumes:
       - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/ # Mount the 'IMBG-Data-RAW' directory with real data,
+      - /mnt/IMBG-NGS-Analysys/:/mnt/IMBG-NGS-Analysys/ # ... 'IMBG-NGS-Analysys' directory with real data,
       - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data # ... links, capture and config,
-      - /home/students/snakemake_ngs_modules/results:/ngs_pipeline/app/results # ... 'results' directory,
+      - /mnt/sdb/results:/ngs_pipeline/app/results # ... 'results' directory,
       - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs # ... 'references'.
-    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 8 -c 8 --ri --nolock"
-    # command: bash -c "tail -f /dev/null"
-    # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 8 -c 8 --nolock --dag > results/dag.dot"
-    # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -p -j 8 -c 8 -n"
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 8 -c 8 --ri --nolock -p -F"
