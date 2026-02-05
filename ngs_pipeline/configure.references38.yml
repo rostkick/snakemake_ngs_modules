@@ -6,6 +6,7 @@ references:
   wgs_calling_regions: "/ngs_pipeline/app/ngs_refs/GRCh38_boundle/wgs_calling_regions.hg38.interval_list"
   af_only_gnomad: "/ngs_pipeline/app/ngs_refs/GRCh38_boundle/somatic-hg38/af-only-gnomad.hg38.vcf.gz"
   small_exac_common: "/ngs_pipeline/app/ngs_refs/GRCh38_boundle/somatic-hg38/small_exac_common_3.hg38.vcf.gz"
+  pon: "/ngs_pipeline/app/ngs_refs/GRCh38_boundle/somatic-hg38/1000g_pon.hg38.vcf.gz"
   vep_plugins_data:
       CADD: "/ngs_pipeline/app/ngs_refs/VEP_plugins/whole_genome_SNVs.hg38.tsv.gz"
       AlphaMissense: "/ngs_pipeline/app/ngs_refs/VEP_plugins/AlphaMissense_hg38.tsv.gz"

@@ -1,55 +1,13 @@
-# # First stage: Build the initial image with the all heavy dependencies
-# FROM continuumio/miniconda3 AS deps
-
-# # Copy the environment.yml file & tools directory into the container
-# COPY deps/environment.yml /ngs_pipeline/environment.yml
-# COPY deps/tools /ngs_pipeline/tools
-
-# RUN /bin/bash -c "source /opt/conda/etc/profile.d/conda.sh && \
-# 					conda init bash && \
-# 					conda activate base && \
-# 					conda install --yes conda-forge::libarchive && \
-# 					conda install --yes conda-forge::mamba && \
-# 					mamba env create -f /ngs_pipeline/environment.yml"
-# # RUN conda init bash
-# # RUN conda activate base
-
-# # # Get mamba deps
-# # RUN conda install conda-forge::libarchive
-
-# # # Get mamba for further installation acceleration 
-# # RUN conda install --yes conda-forge::mamba
-# # RUN mamba env create -f /ngs_pipeline/environment.yml
-
-# # # Init Conda & clean up cache to reduce image size
-# # RUN /bin/bash -c "source /root/.bashrc && mamba activate base && mamba env create -f /ngs_pipeline/environment.yml" && \
-# #     mamba env update -n base --file /ngs_pipeline/environment.yml && \
-# #     mamba clean -a -y
-
-# # ============================================================
-# # Second stage: Build the final image with the code
-# FROM deps AS code
-
-# # Copy the project code into the container
-# COPY /ngs_pipeline /ngs_pipeline
-
-# # Set the working directory
-# WORKDIR /ngs_pipeline
-
-# CMD ["bash", "-c", "source /opt/conda/etc/profile.d/conda.sh && conda activate smk && snakemake --snakefile Snakefile --cores 4; tail -f /dev/null"]
-# # SHELL [ "conda", "activate", "smk"]
-
-
 # =====================
 # Multi-stage build
 
 # Stage 1: Dependencies
 FROM continuumio/miniconda3 as deps
 
-# Установка зависимостей в контейнере
+# Set working directory
 WORKDIR /ngs_pipeline
 
-# Deps for singularity
+# Install system dependencies including Java
 RUN apt-get update && apt-get install -y \
 		build-essential \
 		libssl-dev \
@@ -60,7 +18,25 @@ RUN apt-get update && apt-get install -y \
 		gperf \
 		wget \
 		pkg-config \
-		git
+		git \
+		rsync \
+		default-jdk \
+		locales \
+		ca-certificates && \
+	rm -rf /var/lib/apt/lists/*
+
+# Configure locale
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen en_US.UTF-8 && \
+    update-locale LANG=en_US.UTF-8
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Copy environment file and tools
+COPY deps/environment.yml .
+COPY deps/tools ./tools
 
 # go installation
 RUN cd /usr/local && \
@@ -87,39 +63,46 @@ RUN cd singularity && \
     make BUILDTAGS="" -C ./builddir && \
     make -C ./builddir install
 
-# Копируем файл с зависимостями и инструменты
-COPY deps/environment.yml .
-COPY deps/tools ./tools
+# Install Mamba
+RUN conda config --set solver libmamba && \
+    conda install --yes conda-forge::mamba
 
-# Mamba
-RUN conda install --yes --solver=classic conda-forge::conda-libmamba-solver conda-forge::libmamba conda-forge::libmambapy conda-forge::libarchive
-RUN conda install --yes conda-forge::mamba
+# Create conda environment from environment.yml
+RUN mamba env create --yes -f environment.yml
+RUN mamba install -c conda-forge gsl -y
 
-# Создаем окружение из environment.yml
-RUN mamba env create -f environment.yml
+# Remove conda's openjdk and reinstall picard without openjdk dependency
+RUN /bin/bash -c "source /opt/conda/etc/profile.d/conda.sh && \
+    conda activate smk && \
+    conda remove --force -y openjdk || true && \
+    mamba install -c bioconda --yes picard --no-deps && \
+    conda clean -a -y"
 
-# Подготавливаем окружение, чтобы оно использовалось по умолчанию
-SHELL ["conda", "run", "-n", "smk", "/bin/bash", "-c"]
+# RUN mamba install -c conda-forge -c bioconda bcftools
+# RUN ln -sf /opt/conda/lib/libgsl.so.25 /opt/conda/envs/smk/lib/libgsl.so.25 && ln -sf /opt/conda/lib/libgslcblas.so.0 /opt/conda/envs/smk/lib/libgslcblas.so.0
+
+# Initialize conda for bash
 RUN conda init bash
 
 # Stage 2: Application
-# FROM continuumio/miniconda3 as code
 FROM deps as code
 
-# Копируем только окружение из первого этапа
-# COPY --from=deps /opt/conda /opt/conda
-
-# Устанавливаем рабочую директорию
+# Set working directory
 WORKDIR /ngs_pipeline
 
-# Копируем весь код проекта
+# Copy project code
 COPY ngs_pipeline app
 
-# Активируем окружение по умолчанию
-SHELL ["conda", "run", "-n", "smk", "/bin/bash", "-c"]
+# Find and set JAVA_HOME dynamically
+RUN JAVA_PATH=$(update-alternatives --query java | grep 'Value:' | cut -d' ' -f2) && \
+    JAVA_HOME=$(dirname $(dirname $JAVA_PATH)) && \
+    echo "export JAVA_HOME=$JAVA_HOME" >> ~/.bashrc && \
+    echo "export PATH=\$JAVA_HOME/bin:/opt/conda/envs/smk/bin:\$PATH" >> ~/.bashrc
 
-# Устанавливаем необходимые настройки и активируем окружение
+ENV PATH=/opt/conda/envs/smk/bin:$PATH
+
+# Activate conda environment by default
 RUN echo "conda activate smk" >> ~/.bashrc
 
-# Команда по умолчанию
+# Default command
 CMD ["bash"]

@@ -3,6 +3,8 @@ rule r4_1_haplotypecaller:
 		bam = rules.r2_7_apply_bqsr.output.bam
 	output:
 		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz"
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/{sample}.haplotypecaller.bm'
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
 	params:
 		gatk = config['tools']['gatk'],
@@ -43,6 +45,8 @@ rule r4_2_combinegvcfs:
 						expand("results/{{run}}/germline/vcf/{sample}.wgs.gvcf.gz", sample=ngs.GRM_SAMPLES)
 	output: 
 		gvcf = "results/{run}/germline/vcf/cohort.g.vcf.gz"
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/combine_gvcf.bm'
 	log: 'results/{run}/logs/germline/combinegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
@@ -58,6 +62,8 @@ rule r4_3_genotypegvcfs:
 		gvcf = rules.r4_2_combinegvcfs.output.gvcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.to_filters.vcf.gz"
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/genotype_gvcf.bm'
 	log: 'results/{run}/logs/germline/genotypegvcfs.log'
 	params:
 		gatk = config['tools']['gatk'],
@@ -91,6 +97,8 @@ rule r4_4_selectvariants_snp:
 		vcf = "results/{run}/germline/vcf/snps.vcf.gz"
 	params:
 		gatk = config['tools']['gatk']
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/select_snp.bm'
 	log: 'results/{run}/logs/germline/select_snp.log'
 	shell: """{params.gatk} SelectVariants \
 		-V {input.vcf} \
@@ -105,6 +113,8 @@ rule r4_5_selectvariants_indel:
 	params:
 		gatk = config['tools']['gatk']
 	log: 'results/{run}/logs/germline/select_indel.log'
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/select_indels.bm'
 	shell: """{params.gatk} SelectVariants \
 		-V {input.vcf} \
 		-select-type INDEL \
@@ -117,6 +127,8 @@ rule r4_6_variantfiltration_snp:
 		vcf = "results/{run}/germline/vcf/snps.filtered.vcf.gz"
 	params:
 		gatk = config['tools']['gatk']
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/apply_hard_filters_snp.bm'
 	log: 'results/{run}/logs/germline/variantfilttation_snp.log'
 	shell: """{params.gatk} VariantFiltration \
 		-V {input.vcf} \
@@ -136,6 +148,8 @@ rule r4_7_variantfiltration_indel:
 		vcf = "results/{run}/germline/vcf/indel.filtered.vcf.gz"
 	params:
 		gatk = config['tools']['gatk']
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/apply_hard_filters_indels.bm'
 	log: "results/{run}/logs/germline/variantfiltration_indel.log"
 	shell:"""{params.gatk} VariantFiltration \
 		-V {input.vcf} \
@@ -153,6 +167,8 @@ rule r4_8_mergevcfs:
 		vcf = "results/{run}/germline/vcf/cohort.vcf.gz"
 	params:
 		gatk = config['tools']['gatk']
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/merge_vcfs.bm'
 	log: "results/{run}/logs/germline/mergevcfs.log"
 	shell:"""{params.gatk} MergeVcfs \
 		-I {input.snps} \
@@ -161,24 +177,31 @@ rule r4_8_mergevcfs:
 
 rule r4_9_deepvariant:
 	input: 
-		bam = rules.r2_7_apply_bqsr.output.bam
+		bam = rules.r2_7_apply_bqsr.output.bam,
+		bed = rules.r2_0_prepare_bed_to_bed.output.bed
 	output: 
 		vcf = "results/{run}/germline/vcf/{sample}.vcf.gz",
-	log: 'results/{run}/logs/germline/{sample}.deepvariant.log'
+		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz"
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/{sample}.dv_calling.bm'
+	log:
+		'results/{run}/logs/germline/{sample}.deepvariant.log'
 	params:
 		singularity = config['tools']['singularity'],
 		deepvariant = config['tools']['deepvariant'],
 		ngs_type = config['ngs_type'],
 		ref = config['references']['genome_fa'],
 		panel_capture = config['panel_capture']['target']
-	threads: 8
+	threads: 32
 	shell: """
 			{params.singularity} run \
 				-B /ngs_pipeline:/ngs_pipeline \
 				{params.deepvariant} /opt/deepvariant/bin/run_deepvariant \
 				--model_type={params.ngs_type} \
 				--output_vcf={output.vcf} \
+				--output_gvcf={output.gvcf} \
 				--reads={input.bam} \
 				--ref={params.ref} \
+				--regions {input.bed} \
 				--num_shards={threads} &>{log} || true"""
 				# --regions {params.panel_capture} \

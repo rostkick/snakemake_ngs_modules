@@ -18,6 +18,9 @@ services:
       - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/ # Mount the 'IMBG-Data-RAW' directory with real data,
       - /mnt/IMBG-NGS-Analysys/:/mnt/IMBG-NGS-Analysys/ # ... 'IMBG-NGS-Analysys' directory with real data,
       - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data # ... links, capture and config,
+      - /mnt/IMBG-NGS-Analysys/IMBG-Data-Analysys:/ngs_pipeline/app/archive # ... 'archive' directory,
       - /mnt/sdb/results:/ngs_pipeline/app/results # ... 'results' directory,
+      - /mnt/sdb/results:/ngs_pipeline/app/results # ... 'bench' directory,
       - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs # ... 'references'.
-    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 8 -c 8 --ri --nolock -p -F"
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 10 -c 64 --ri --nolock -p --config calling_mode=individual"
+    # command: "tail -f /dev/null"

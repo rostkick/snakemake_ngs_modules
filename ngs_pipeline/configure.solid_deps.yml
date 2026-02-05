@@ -5,9 +5,11 @@ snakemake_modules: "modules/"
 
 tools:
   samtools: "/opt/conda/envs/smk/bin/samtools"
-  bwa_mem2: "/ngs_pipeline/tools/bwa-mem2/bwa-mem2"
+  # bwa_mem2: "/ngs_pipeline/tools/bwa-mem2/bwa-mem2"
+  bwa_mem2: "/opt/conda/envs/smk/bin/bwa-mem2"
   gatk: "/opt/conda/envs/smk/bin/gatk"
   singularity: "/usr/local/bin/singularity"
+  picard: "/opt/conda/envs/smk/bin/picard"
   picard_old: "/ngs_pipeline/tools/picard-tools-2.0.1/picard.jar"
   bcftools: "/opt/conda/envs/smk/bin/bcftools"
   deepvariant: "/ngs_pipeline/tools/deepvariant_latest.sif"

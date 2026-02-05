@@ -6,7 +6,7 @@ rule r7_1_mutect2_tmr_only:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input: 
 		bam = lambda wc: get_somatic_input(wc, ngs.data)['tumor'],
-		capture = rules.r2_8_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
+		capture = rules.r2_0_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
 	output: 
 		vcf = 'results/{run}/somatic/{patient}/raw_tonly.vcf.gz',
 		bam = 'results/{run}/somatic/{patient}/raw_tonly.bam'
@@ -16,7 +16,7 @@ rule r7_1_mutect2_tmr_only:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
 		grm_res = config['references']['af_only_gnomad'],
-		pon = config['references']['snps']
+		pon = config['references']['pon']
 	shell: """
 			{params.gatk} Mutect2 \
 				-R {params.ref} \
@@ -24,6 +24,7 @@ rule r7_1_mutect2_tmr_only:
 				-O {output.vcf} \
 				-bamout {output.bam} \
 				--germline-resource {params.grm_res} \
+				--af-of-alleles-not-in-resource 0.0001 \
 				--panel-of-normals {params.pon} 2>{log}"""
 
 rule r7_2_calculate_contamination_tmr_only:

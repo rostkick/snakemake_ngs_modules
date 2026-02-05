@@ -16,10 +16,12 @@ rule r8_1_vep_germline_joint:
 		clinvar = config['references']['vep_plugins_data']['custom']['ClinVar'],
 		snpred = config['references']['vep_plugins_data']['custom']['SNPred'],
 		phenotypes = config['references']['vep_plugins_data']['Phenotypes']
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/anno_joint.bm'
 	log:
 		'results/{run}/logs/germline/annotation.log'
 	threads:
-		workflow.cores
+		4
 	shell: """{params.singularity} run -B /ngs_pipeline:/ngs_pipeline {params.vep} \
 				/opt/vep/src/ensembl-vep/vep \
 				--cache \
@@ -65,6 +67,8 @@ use rule r8_1_vep_germline_joint as r8_2_vep_germline_individual with:
 		vcf = rules.r4_9_deepvariant.output.vcf
 	output:
 		vcf = "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/{sample}.anno_individual.bm'
 	log:
 		'results/{run}/logs/germline/{sample}.annotation.log'
 
@@ -75,6 +79,8 @@ use rule r8_1_vep_germline_joint as r8_3_vep_somatic_paired with:
 		vcf = rules.r6_5_filter_pass_exclude_normal_paired.output.vcf
 	output:
 		vcf = 'results/{run}/somatic/{patient}/somatic_annotated.vcf.gz'
+	benchmark:
+		'results/{run}/benchmarks/somatic/{patient}/anno_tmr_paired.bm'
 	log:
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 
@@ -85,5 +91,7 @@ use rule r8_1_vep_germline_joint as r8_4_vep_somatic_tmr_only with:
 		vcf = rules.r7_3_filter_mutect_calls_tmr_only.output.vcf
 	output:
 		vcf = 'results/{run}/somatic/{patient}/somatic_annotated_tonly.vcf.gz'
+	benchmark:
+		'results/{run}/benchmarks/somatic/{patient}/anno_only_tmr.bm'
 	log:
 		'results/{run}/logs/somatic/{patient}/annotation.log'

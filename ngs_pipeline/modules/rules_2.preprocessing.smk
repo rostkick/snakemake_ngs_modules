@@ -1,3 +1,29 @@
+rule r2_0_bed_to_intervals:
+	input: 
+		bed = config["panel_capture"]["target"]
+	output: 
+		intervals = "results/{run}/capture.intervals"
+	params:
+		picard = config['tools']['picard'],  # Используем новый picard из conda
+		ref_dict = config['references']['dict']
+	benchmark:
+		'results/{run}/benchmarks/bam/bed2intervals.bm'
+	log: 
+		'results/{run}/logs/prep/intervals.log'
+	shell: 
+		"{params.picard} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
+
+rule r2_0_prepare_bed_to_bed:
+	input: 
+		bed = config["panel_capture"]["target"]
+	output: 
+		bed = "results/{run}/capture.clean.bed"
+	log: 
+		'results/{run}/logs/prep/prepare_bed.log'
+	shell: """
+		grep -v "^browser" {input.bed} | grep -vP "^track|^browser" | grep -v "^#" | cut -f1-3 > {output.bed} 2>{log}
+		"""
+
 rule r2_1_sam_to_bam:
 	input: 
 		sam = rules.r1_1_read_alignment.output.sam
@@ -6,7 +32,9 @@ rule r2_1_sam_to_bam:
 	params:
 		samtools = config['tools']['samtools']
 	threads:
-		workflow.cores/(len(ngs.SAMPLES) * max(len(ngs.LANES), 1)) if config['ngs_type'] == 'WES' else workflow.cores/2
+		4
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.{lane}.sam2bam.bm'
 	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
 
 rule r2_2_sort_premerged_bams:
@@ -17,7 +45,9 @@ rule r2_2_sort_premerged_bams:
 	params:
 		samtools = config['tools']['samtools']
 	threads:
-		workflow.cores/(len(ngs.SAMPLES)*max(len(ngs.LANES), 1))
+		4
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.{lane}.sort1.bm'
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
 
 # Function to create filtered combinations of wildcards, based on the presence of input files.
@@ -53,13 +83,15 @@ rule r2_3_merge_bams:
 		bam = temp('results/{run}/bam/{sample}.for_sort2.bam')
 	params:
 		samtools = config['tools']['samtools']
-	run:
-		if len(input.bams)>1:
-			print(f"{params.samtools} merge {output.bam} {input.bams}")
-			shell("{params.samtools} merge {output.bam} {input.bams}")
-		else:
-			print(f"ln -s {input.bams} {output.bam}")
-			shell("cp {input.bams} {output.bam}")
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.merge_bam.bm'
+	shell: """
+		if [ $(echo {input.bams} | wc -w) -gt 1 ]; then
+			{params.samtools} merge {output.bam} {input.bams}
+		else
+			cp {input.bams} {output.bam}
+		fi
+	"""
 
 rule r2_4_sorting_bam:
 	input: 
@@ -67,9 +99,11 @@ rule r2_4_sorting_bam:
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
 	threads: 
-		workflow.cores/len(ngs.SAMPLES)
+		4
 	params: 
 		samtools = config['tools']['samtools']
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.sort2.bm'
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
 
 rule r2_5_mark_duplicates:
@@ -80,32 +114,38 @@ rule r2_5_mark_duplicates:
 	params:
 		gatk = config['tools']['gatk'],
 		samtools = config['tools']['samtools']
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.mark_dedup.bm'
 	log: 
 		log1 = "results/{run}/logs/prep/{sample}.dedup.log1",
 		log2 = "results/{run}/logs/prep/{sample}.dedup.log2"
-	run: 
-		if config['hs']:
-			shell("""
+	shell: """
+		if [ "{config[hs]}" = "True" ] || [ "{config[hs]}" = "true" ]; then
 			{params.gatk} MarkDuplicates \
-						-I {input.bam} -O {output.bam} -M {log.log1} 2>{log.log2} \
-						--ASSUME_SORTED true
-						{params.samtools} index {output.bam}""")
-		else:
-			shell('ln -s {input.bam} {output.bam} && {params.samtools} index {output.bam}')
+				-I {input.bam} -O {output.bam} -M {log.log1} 2>{log.log2} \
+				--ASSUME_SORTED true
+			{params.samtools} index {output.bam}
+		else
+			cp {input.bam} {output.bam}
+			{params.samtools} index {output.bam}
+		fi
+	"""
 
 rule r2_6_prepare_bqsr:
 	input: 
 		bam = rules.r2_5_mark_duplicates.output.bam
 	output: 
 		bqsr = temp("results/{run}/bam/{sample}.for_bqsr.recal.table")
-	log: 
-		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	params:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
 		snps = config['references']['snps'],
 		indels = config['references']['indels'],
 		wgs_calling_regions = config['references']['wgs_calling_regions']
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.bqsr_recal.bm'
+	log: 
+		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
 	shell: """{params.gatk} BaseRecalibrator \
 				-R {params.ref} \
 				-I {input.bam} \
@@ -119,28 +159,41 @@ rule r2_7_apply_bqsr:
 		bam = rules.r2_5_mark_duplicates.output.bam,
 		bqsr = rules.r2_6_prepare_bqsr.output.bqsr
 	output: 
-		bam = "results/{run}/bam/{sample}.final.bam"
-	log: 
-		'results/{run}/logs/prep/{sample}.bqsr_apply.log'
+		bam = temp("results/{run}/bam/{sample}.final.bam"),
 	params:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
-		wgs_calling_regions = config['references']['wgs_calling_regions']
-	threads: workflow.cores/len(ngs.SAMPLES)
+		# wgs_calling_regions = config['references']['wgs_calling_regions'],
+		panel_capture = config['panel_capture']['target']
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.apply_bqsr.bm'
+	log: 
+		'results/{run}/logs/prep/{sample}.bqsr_apply.log'
+	threads: 4
 	shell: """{params.gatk} ApplyBQSR \
 				-R {params.ref} \
 				-I {input.bam} \
-				-L {params.wgs_calling_regions} \
+				-L {params.panel_capture} \
 				-bqsr {input.bqsr} \
-				-O {output} &>{log}"""
+				-O {output.bam} &>{log}"""
 
-rule r2_8_bed_to_intervals:
-	input: 
-		bed = config["panel_capture"]["target"]
-	output: 
-		intervals = "results/{run}/capture.intervals"
+rule r2_7b_index_bam:
+	input: rules.r2_7_apply_bqsr.output.bam
+	output: "results/{run}/bam/{sample}.final.bam.bai"
 	params:
-		picard_old = config['tools']['picard_old'],
-		ref_dict = config['references']['dict']
-	log: 'results/{run}/logs/prep/intervals.log'
-	shell: "java -jar {params.picard_old} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
+		samtools = config['tools']['samtools']
+	shell: "{params.samtools} index {input}"
+
+rule r2_8_archive_bams:
+	input:
+		bam = rules.r2_7_apply_bqsr.output.bam
+	output:
+		bam = "archive/{run}/bam/{sample}.final.bam"
+	benchmark:
+		'results/{run}/benchmarks/bam/{sample}.move_bam.bm'
+	log:
+		"results/{run}/logs/archive/{sample}.archive.log"
+	shell: """
+		rsync -av {input.bam} {output.bam} &>>{log}
+		echo "Archived {wildcards.sample} to network storage" >> {log}
+		"""
