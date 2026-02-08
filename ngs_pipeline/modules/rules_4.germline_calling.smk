@@ -1,6 +1,6 @@
 rule r4_1_haplotypecaller:
 	input: 
-		bam = rules.r2_7_apply_bqsr.output.bam
+		bam = rules.r2_9_apply_bqsr.output.bam
 	output:
 		gvcf = "results/{run}/germline/vcf/{sample}.gatk.gvcf.gz"
 	benchmark:
@@ -24,9 +24,9 @@ rule r4_1_haplotypecaller:
 			--native-pair-hmm-threads {threads} 2>{log}
 	"""
 
-rule r4_1_haplotypecaller_wgs:
+rule r4_2_haplotypecaller_wgs:
 	input: 
-		bam = rules.r2_7_apply_bqsr.output.bam
+		bam = rules.r2_9_apply_bqsr.output.bam
 	output:
 		gvcf = "results/{run}/germline/vcf/{sample}.wgs.gatk.gvcf.gz"
 	log: 'results/{run}/logs/germline/{sample}.haplotypecaller_wgs.log'
@@ -46,7 +46,7 @@ rule r4_1_haplotypecaller_wgs:
 			--native-pair-hmm-threads {threads} 2>{log} || true
 	"""
 
-rule r4_2_combinegvcfs:
+rule r4_3_combine_gvcfs:
 	input: 
 		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gatk.gvcf.gz", sample=ngs.GRM_SAMPLES) \
 					if config['ngs_type'] != 'WGS' else \
@@ -70,9 +70,9 @@ rule r4_2_combinegvcfs:
 			-O {output.gvcf} 2>{log}
 	"""
 
-rule r4_3_genotypegvcfs:
+rule r4_4_genotype_gvcfs:
 	input: 
-		gvcf = rules.r4_2_combinegvcfs.output.gvcf
+		gvcf = rules.r4_3_combine_gvcfs.output.gvcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.to_filters.vcf.gz"
 	benchmark:
@@ -93,9 +93,9 @@ rule r4_3_genotypegvcfs:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_3_genotypegvcfs_wgs:
+rule r4_5_genotype_gvcfs_wgs:
 	input: 
-		gvcf = rules.r4_2_combinegvcfs.output.gvcf
+		gvcf = rules.r4_3_combine_gvcfs.output.gvcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.to_filters.wgs.vcf.gz"
 	log: 'results/{run}/logs/germline/genotypegvcfs_wgs.log'
@@ -112,9 +112,9 @@ rule r4_3_genotypegvcfs_wgs:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_4_selectvariants_snp:
+rule r4_6_select_variants_snp:
 	input:
-		vcf = rules.r4_3_genotypegvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_3_genotypegvcfs_wgs.output.vcf
+		vcf = rules.r4_4_genotype_gvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_5_genotype_gvcfs_wgs.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/snps.vcf.gz"
 	params:
@@ -132,9 +132,9 @@ rule r4_4_selectvariants_snp:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_5_selectvariants_indel:
+rule r4_7_select_variants_indel:
 	input:
-		vcf = rules.r4_3_genotypegvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_3_genotypegvcfs_wgs.output.vcf
+		vcf = rules.r4_4_genotype_gvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_5_genotype_gvcfs_wgs.output.vcf
 	output:
 		vcf = "results/{run}/germline/vcf/indel.vcf.gz"
 	params:
@@ -152,9 +152,9 @@ rule r4_5_selectvariants_indel:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_6_variantfiltration_snp:
+rule r4_8_variant_filtration_snp:
 	input: 
-		vcf = rules.r4_4_selectvariants_snp.output.vcf
+		vcf = rules.r4_6_select_variants_snp.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/snps.filtered.vcf.gz"
 	params:
@@ -178,9 +178,9 @@ rule r4_6_variantfiltration_snp:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_7_variantfiltration_indel:
+rule r4_9_variant_filtration_indel:
 	input:
-		vcf = rules.r4_5_selectvariants_indel.output.vcf
+		vcf = rules.r4_7_select_variants_indel.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/indel.filtered.vcf.gz"
 	params:
@@ -201,10 +201,10 @@ rule r4_7_variantfiltration_indel:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_8_mergevcfs:
+rule r4_10_merge_vcfs:
 	input: 
-		snps = rules.r4_6_variantfiltration_snp.output.vcf,
-		indels = rules.r4_7_variantfiltration_indel.output.vcf
+		snps = rules.r4_8_variant_filtration_snp.output.vcf,
+		indels = rules.r4_9_variant_filtration_indel.output.vcf
 	output: 
 		vcf = "results/{run}/germline/vcf/cohort.vcf.gz"
 	params:
@@ -222,13 +222,15 @@ rule r4_8_mergevcfs:
 			-O {output.vcf} 2>{log}
 	"""
 
-rule r4_9_deepvariant:
+rule r4_11_deepvariant:
 	input: 
-		bam = rules.r2_7_apply_bqsr.output.bam,
-		bed = rules.r2_0_prepare_bed_to_bed.output.bed
+		bam = rules.r2_9_apply_bqsr.output.bam,
+		bed = rules.r2_2_prepare_bed_to_bed.output.bed
 	output: 
 		vcf = "results/{run}/germline/vcf/{sample}.vcf.gz",
-		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz"
+		vcf_tbi = "results/{run}/germline/vcf/{sample}.vcf.gz.tbi",
+		gvcf = "results/{run}/germline/vcf/{sample}.gvcf.gz",
+		gvcf_tbi = "results/{run}/germline/vcf/{sample}.gvcf.gz.tbi"
 	benchmark:
 		'results/{run}/benchmarks/germline/vcf/{sample}.dv_calling.bm'
 	log:
@@ -252,27 +254,4 @@ rule r4_9_deepvariant:
 			--ref={params.ref} \
 			--regions {input.bed} \
 			--num_shards={threads} &>{log} || true
-	"""
-
-rule r4_10_archive_vcfs:
-	input:
-		vcf = rules.r4_9_deepvariant.output.vcf,
-		gvcf = rules.r4_9_deepvariant.output.gvcf
-	output:
-		vcf = "archive/{run}/germline/vcf/{sample}.vcf.gz",
-		vcf_tbi = "archive/{run}/germline/vcf/{sample}.vcf.gz.tbi",
-		gvcf = "archive/{run}/germline/vcf/{sample}.gvcf.gz",
-		gvcf_tbi = "archive/{run}/germline/vcf/{sample}.gvcf.gz.tbi"
-	threads: 1
-	resources:
-		mem_mb=1000
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/{sample}.archive_vcf.bm'
-	log:
-		"results/{run}/logs/archive/{sample}.archive_vcf.log"
-	shell: """
-		mkdir -p $(dirname {output.vcf})
-		rsync -av {input.vcf}* $(dirname {output.vcf})/ &>>{log}
-		rsync -av {input.gvcf}* $(dirname {output.gvcf})/ &>>{log}
-		echo "Archived {wildcards.sample} (VCF + GVCF with indices) to network storage" >> {log}
 	"""

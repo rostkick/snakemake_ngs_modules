@@ -20,14 +20,14 @@ def get_final_inputs(ngs):
 
     if ngs.GRM:
         
-        # Archive BAM files
+        # Archive BAM files (rule r0_1_archive_bams)
         archive_bams = [
             f"archive/{config['run']}/bam/{sample}.final.bam"
             for sample in ngs.SAMPLES
         ]
         germline_inputs += archive_bams
         
-        # Archive VCF files (raw DeepVariant)
+        # Archive VCF files (rule r0_2_archive_vcfs)
         if calling_mode in ['individual', 'both']:
             archive_vcfs = [
                 f"archive/{config['run']}/germline/vcf/{sample}.vcf.gz"
@@ -50,13 +50,13 @@ def get_final_inputs(ngs):
             ]
             germline_inputs += germline_inputs_individual
             
-            # Archive XLSX
+            # Archive XLSX (rule r0_4_archive_xlsx)
             archive_xlsx = [
                 f"archive/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
             ]
             germline_inputs += archive_xlsx
             
-            # Archive TSV files
+            # Archive TSV files (rule r0_3_archive_tsv_individual)
             archive_tsvs = [
                 f"archive/{config['run']}/germline/tsv/{sample}.tsv"
                 for sample in ngs.GRM_SAMPLES
@@ -77,8 +77,8 @@ def get_final_inputs(ngs):
             for patient in ngs.ONLY_TMR_PATIENTS
         ]
 
-    # Quality metrics for WES samples
-    if config['ngs_type'] == 'WES':
+    # Quality metrics for WES and panel samples
+    if config['ngs_type'] in ['WES', 'panel']:
         metrics = [
             f"results/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
             for sample in ngs.SAMPLES
@@ -145,7 +145,7 @@ def get_somatic_calling_targets(ngs):
 
 def get_metrics_targets(ngs):
     """
-    Get quality metrics targets for WES samples.
+    Get quality metrics targets for WES and panel samples.
     
     Args:
         ngs: NGS data object containing sample information
@@ -153,7 +153,7 @@ def get_metrics_targets(ngs):
     Returns:
         list: List of metrics target files
     """
-    if config['ngs_type'] == 'WES':
+    if config['ngs_type'] in ['WES', 'panel']:
         return [
             f"results/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
             for sample in ngs.SAMPLES

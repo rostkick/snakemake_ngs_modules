@@ -1,6 +1,6 @@
 rule r8_1_vep_germline_joint:
 	input:
-		vcf = rules.r4_8_mergevcfs.output.vcf
+		vcf = rules.r4_10_merge_vcfs.output.vcf
 	output:
 		vcf = 'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
 	params: 
@@ -64,7 +64,7 @@ use rule r8_1_vep_germline_joint as r8_2_vep_germline_individual with:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input: 
-		vcf = rules.r4_9_deepvariant.output.vcf
+		vcf = rules.r4_11_deepvariant.output.vcf
 	output:
 		vcf = "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
 	benchmark:

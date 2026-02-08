@@ -1,10 +1,10 @@
-rule r2_0_bed_to_intervals:
+rule r2_1_bed_to_intervals:
 	input: 
 		bed = config["panel_capture"]["target"]
 	output: 
 		intervals = "results/{run}/capture.intervals"
 	params:
-		picard = config['tools']['picard'],  # Используем новый picard из conda
+		picard = config['tools']['picard'],
 		ref_dict = config['references']['dict']
 	benchmark:
 		'results/{run}/benchmarks/bam/bed2intervals.bm'
@@ -13,7 +13,7 @@ rule r2_0_bed_to_intervals:
 	shell: 
 		"{params.picard} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
 
-rule r2_0_prepare_bed_to_bed:
+rule r2_2_prepare_bed_to_bed:
 	input: 
 		bed = config["panel_capture"]["target"]
 	output: 
@@ -24,7 +24,7 @@ rule r2_0_prepare_bed_to_bed:
 		grep -v "^browser" {input.bed} | grep -vP "^track|^browser" | grep -v "^#" | cut -f1-3 > {output.bed} 2>{log}
 		"""
 
-rule r2_1_sam_to_bam:
+rule r2_3_sam_to_bam:
 	input: 
 		sam = rules.r1_1_read_alignment.output.sam
 	output:
@@ -38,9 +38,9 @@ rule r2_1_sam_to_bam:
 		'results/{run}/benchmarks/bam/{sample}.{lane}.sam2bam.bm'
 	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
 
-rule r2_2_sort_premerged_bams:
+rule r2_4_sort_premerged_bams:
 	input: 
-		bam = rules.r2_1_sam_to_bam.output.bam
+		bam = rules.r2_3_sam_to_bam.output.bam
 	output: 
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	params:
@@ -78,7 +78,7 @@ def get_merged_bams(wc):
 			result_output.append(f'results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	return result_output
 
-rule r2_3_merge_bams:
+rule r2_5_merge_bams:
 	input:
 		bams = get_merged_bams
 	output: 
@@ -98,9 +98,9 @@ rule r2_3_merge_bams:
 		fi
 	"""
 
-rule r2_4_sorting_bam:
+rule r2_6_sorting_bam:
 	input: 
-		bam = rules.r2_3_merge_bams.output.bam
+		bam = rules.r2_5_merge_bams.output.bam
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
 	threads: 8
@@ -112,9 +112,9 @@ rule r2_4_sorting_bam:
 		'results/{run}/benchmarks/bam/{sample}.sort2.bm'
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
 
-rule r2_5_mark_duplicates:
+rule r2_7_mark_duplicates:
 	input: 
-		bam = rules.r2_4_sorting_bam.output.bam
+		bam = rules.r2_6_sorting_bam.output.bam
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_bqsr.bam")
 	params:
@@ -137,9 +137,9 @@ rule r2_5_mark_duplicates:
 		fi
 	"""
 
-rule r2_6_prepare_bqsr:
+rule r2_8_prepare_bqsr:
 	input: 
-		bam = rules.r2_5_mark_duplicates.output.bam
+		bam = rules.r2_7_mark_duplicates.output.bam
 	output: 
 		bqsr = temp("results/{run}/bam/{sample}.for_bqsr.recal.table")
 	params:
@@ -160,16 +160,15 @@ rule r2_6_prepare_bqsr:
 				-L {params.wgs_calling_regions} \
 				-O {output} &>{log}"""
 
-rule r2_7_apply_bqsr:
+rule r2_9_apply_bqsr:
 	input: 
-		bam = rules.r2_5_mark_duplicates.output.bam,
-		bqsr = rules.r2_6_prepare_bqsr.output.bqsr
+		bam = rules.r2_7_mark_duplicates.output.bam,
+		bqsr = rules.r2_8_prepare_bqsr.output.bqsr
 	output: 
 		bam = temp("results/{run}/bam/{sample}.final.bam"),
 	params:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
-		# wgs_calling_regions = config['references']['wgs_calling_regions'],
 		panel_capture = config['panel_capture']['target']
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.apply_bqsr.bm'
@@ -182,29 +181,9 @@ rule r2_7_apply_bqsr:
 				-bqsr {input.bqsr} \
 				-O {output.bam} &>{log}"""
 
-rule r2_7b_index_bam:
-	input: rules.r2_7_apply_bqsr.output.bam
+rule r2_10_index_bam:
+	input: rules.r2_9_apply_bqsr.output.bam
 	output: "results/{run}/bam/{sample}.final.bam.bai"
 	params:
 		samtools = config['tools']['samtools']
 	shell: "{params.samtools} index {input}"
-
-rule r2_8_archive_bams:
-	input:
-		bam = rules.r2_7_apply_bqsr.output.bam,
-		bai = rules.r2_7b_index_bam.output
-	output:
-		bam = "archive/{run}/bam/{sample}.final.bam",
-		bai = "archive/{run}/bam/{sample}.final.bam.bai"
-	threads: 1
-	resources:
-		mem_mb=1000
-	benchmark:
-		'results/{run}/benchmarks/bam/{sample}.move_bam.bm'
-	log:
-		"results/{run}/logs/archive/{sample}.archive.log"
-	shell: """
-		rsync -av {input.bam} {output.bam} &>>{log}
-		rsync -av {input.bai} {output.bai} &>>{log}
-		echo "Archived {wildcards.sample} (BAM + BAI) to network storage" >> {log}
-	"""

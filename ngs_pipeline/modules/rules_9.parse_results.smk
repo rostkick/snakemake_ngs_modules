@@ -1,4 +1,4 @@
-rule r9_0_filter_panel_genes:
+rule r9_1_filter_panel_genes:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input: 
@@ -29,11 +29,11 @@ rule r9_0_filter_panel_genes:
 			-O z -o {output.vcf} 2>{log}
 	"""
 
-rule r9_1_parse_vcf_individual:
+rule r9_2_parse_vcf_individual:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input: 
-		vcf = rules.r9_0_filter_panel_genes.output.vcf if config.get('ngs_type') == 'panel' else rules.r8_2_vep_germline_individual.output.vcf
+		vcf = rules.r9_1_filter_panel_genes.output.vcf if config.get('ngs_type') == 'panel' else rules.r8_2_vep_germline_individual.output.vcf
 	output:
 		tsv = "results/{run}/germline/tsv/{sample}.unfiltered.tsv"
 	params:
@@ -53,11 +53,11 @@ am_class\\tam_pathogenicity\\tSNPred_score\\tCoverageDepth\\tGenotypeQual\\tAlle
 %ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
 %am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t[%DP]\\t[%GQ]\\t[%AD]\\n' {input.vcf} >> {output.tsv}"""
 
-rule r9_2_filter_tsv_individual:
+rule r9_3_filter_tsv_individual:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input: 
-		tsv = rules.r9_1_parse_vcf_individual.output.tsv
+		tsv = rules.r9_2_parse_vcf_individual.output.tsv
 	output:
 		tsv = "results/{run}/germline/tsv/{sample}.tsv"
 	params:
@@ -70,31 +70,11 @@ rule r9_2_filter_tsv_individual:
 		'results/{run}/logs/parse_results/{sample}.tsv2xlsx.log'
 	script: "scripts/postprocess.py"
 
-rule r9_2b_archive_tsv_individual:
-	wildcard_constraints:
-		sample = "|".join(ngs.GRM_SAMPLES)
-	input:
-		tsv = rules.r9_2_filter_tsv_individual.output.tsv
-	output:
-		tsv = "archive/{run}/germline/tsv/{sample}.tsv"
-	threads: 1
-	resources:
-		mem_mb=500
-	benchmark:
-		'results/{run}/benchmarks/germline/tsv/{sample}.archive_tsv.bm'
-	log:
-		"results/{run}/logs/archive/{sample}.archive_tsv.log"
-	shell: """
-		mkdir -p $(dirname {output.tsv})
-		rsync -av {input.tsv} {output.tsv} &>>{log}
-		echo "Archived {wildcards.sample} TSV to network storage" >> {log}
-	"""
-
 def get_input_files(wildcards):
 	samples = ngs.GRM_SAMPLES
 	return [f"data/{sample}.tsv" for sample in samples]
 
-rule r9_3_merge_tsv_to_xlsx:
+rule r9_4_merge_tsv_to_xlsx:
 	input:
 		tsv = expand("results/{run}/germline/tsv/{sample}.tsv", run=config['run'], sample=ngs.GRM_SAMPLES)
 	output:
@@ -105,21 +85,3 @@ rule r9_3_merge_tsv_to_xlsx:
 		'results/{run}/logs/parse_results/tsv2xlsx.log'
 	script:
 		"scripts/collect_tsv_to_xml.py"
-
-rule r9_3b_archive_xlsx:
-	input:
-		xlsx = rules.r9_3_merge_tsv_to_xlsx.output.xlsx
-	output:
-		xlsx = "archive/{run}/germline/xlsx/individual.{run}.germline.results.xlsx"
-	threads: 1
-	resources:
-		mem_mb=500
-	benchmark:
-		'results/{run}/benchmarks/germline/xlsx/archive_xlsx.bm'
-	log:
-		"results/{run}/logs/archive/xlsx.{run}.log"
-	shell: """
-		mkdir -p $(dirname {output.xlsx})
-		rsync -av {input.xlsx} {output.xlsx} &>>{log}
-		echo "Archived individual.{wildcards.run}.germline.results.xlsx to network storage" >> {log}
-	"""
