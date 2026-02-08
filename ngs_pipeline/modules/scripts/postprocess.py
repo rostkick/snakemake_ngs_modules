@@ -9,6 +9,8 @@ input_file = snakemake.input.tsv
 mart_file = snakemake.params.mart
 rank_file = snakemake.params.rank
 output_file = snakemake.output.tsv
+bed_file = snakemake.params.get('bed_file', None)
+ngs_type = snakemake.params.get('ngs_type', None)
 
 gnomad_filter_enabled = snakemake.params.get('gnomad_filter', False)
 gnomad_af_threshold = snakemake.params.get('gnomad_af_threshold', 0.01)
@@ -114,6 +116,47 @@ def apply_quality_filters(df):
     return df
 
 
+def filter_by_panel_genes(df, bed_file, ngs_type):
+    """Filter dataframe to only include genes from the panel (only for panel sequencing)"""
+    if ngs_type != 'panel':
+        print(f"NGS type is '{ngs_type}', skipping panel gene filter")
+        return df
+    
+    if not bed_file or not os.path.exists(bed_file):
+        print("BED file not provided or does not exist, skipping panel filter")
+        return df
+    
+    panel_genes = []
+    with open(bed_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('browser') and not line.startswith('track') and not line.startswith('#'):
+                fields = line.split('\t')
+                if len(fields) >= 4:
+                    panel_genes.append(fields[3])
+    
+    panel_genes_set = set(panel_genes)
+    print(f"Loaded {len(panel_genes_set)} genes from panel BED file")
+    
+    gene_col = None
+    for col in ['RefGene', 'HGNC symbol', 'Gene', 'Gene_Symbol', 'SYMBOL']:
+        if col in df.columns:
+            gene_col = col
+            break
+    
+    if not gene_col:
+        print("WARNING: Could not find gene column, skipping panel filter")
+        return df
+    
+    initial_count = len(df)
+    df = df[df[gene_col].isin(panel_genes_set)]
+    filtered_count = initial_count - len(df)
+    
+    print(f"Panel filter: removed {filtered_count} variants ({initial_count} -> {len(df)})")
+    
+    return df
+
+
 def main():
     df = pd.read_csv(input_file, sep='\t', encoding='utf-8')
     df_mart = pd.read_csv(mart_file, sep='\t', encoding='utf-8')
@@ -181,6 +224,8 @@ def main():
                 col_mask = df[col] >= gnomad_af_threshold
                 gnomad_mask = gnomad_mask | col_mask
             df = df[~gnomad_mask]
+
+    df = filter_by_panel_genes(df, bed_file, ngs_type)
 
     consequence_order = {
         'sequence_variant': 0,

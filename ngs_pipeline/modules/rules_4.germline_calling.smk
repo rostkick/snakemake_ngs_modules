@@ -238,7 +238,7 @@ rule r4_11_deepvariant:
 	params:
 		singularity = config['tools']['singularity'],
 		deepvariant = config['tools']['deepvariant'],
-		ngs_type = config['ngs_type'],
+		model_type = lambda wc: 'WES' if config['ngs_type'] in ['WES', 'panel'] else config['ngs_type'],
 		ref = config['references']['genome_fa']
 	threads: 16
 	resources:
@@ -247,7 +247,7 @@ rule r4_11_deepvariant:
 		{params.singularity} run \
 			-B /ngs_pipeline:/ngs_pipeline \
 			{params.deepvariant} /opt/deepvariant/bin/run_deepvariant \
-			--model_type={params.ngs_type} \
+			--model_type={params.model_type} \
 			--output_vcf={output.vcf} \
 			--output_gvcf={output.gvcf} \
 			--reads={input.bam} \
