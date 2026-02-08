@@ -16,20 +16,24 @@ def get_final_inputs(ngs):
     somatic_inputs = []
     metrics = []
 
-    # Get calling mode from config
-    calling_mode = config.get('calling_mode', 'both')  # 'individual', 'joint', 'both'
+    calling_mode = config.get('calling_mode', 'both')
 
     if ngs.GRM:
         
+        # Archive BAM files
         archive_bams = [
             f"archive/{config['run']}/bam/{sample}.final.bam"
             for sample in ngs.SAMPLES
         ]
-        archive_bai = [
-            f"archive/{config['run']}/bam/{sample}.final.bam.bai"
-            for sample in ngs.SAMPLES
-        ]
         germline_inputs += archive_bams
+        
+        # Archive VCF files (raw DeepVariant)
+        if calling_mode in ['individual', 'both']:
+            archive_vcfs = [
+                f"archive/{config['run']}/germline/vcf/{sample}.vcf.gz"
+                for sample in ngs.GRM_SAMPLES
+            ]
+            germline_inputs += archive_vcfs
 
         # Joint calling (cohort-level analysis)
         if calling_mode in ['joint', 'both']:
@@ -38,14 +42,26 @@ def get_final_inputs(ngs):
             ]
             germline_inputs += germline_inputs_cohort
 
-
         # Individual calling (per-sample analysis)
         if calling_mode in ['individual', 'both']:
+            # Final XLSX (remains in results)
             germline_inputs_individual = [
                 f"results/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
             ]
             germline_inputs += germline_inputs_individual
-
+            
+            # Archive XLSX
+            archive_xlsx = [
+                f"archive/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
+            ]
+            germline_inputs += archive_xlsx
+            
+            # Archive TSV files
+            archive_tsvs = [
+                f"archive/{config['run']}/germline/tsv/{sample}.tsv"
+                for sample in ngs.GRM_SAMPLES
+            ]
+            germline_inputs += archive_tsvs
 
         # Somatic calling (if tumor samples are present)
         if ngs.TMR:
@@ -84,7 +100,6 @@ def get_germline_calling_targets(ngs):
     """
     targets = []
     
-    # Get calling mode from config
     calling_mode = config.get('calling_mode', 'both')
 
     if ngs.GRM:
@@ -156,13 +171,11 @@ def get_joint_only_inputs(ngs):
     Returns:
         list: List of target files for joint calling only
     """
-    # Temporarily override config for joint-only mode
     original_mode = config.get('calling_mode', 'both')
     config['calling_mode'] = 'joint'
     
     result = get_final_inputs(ngs)
     
-    # Restore original config
     config['calling_mode'] = original_mode
     
     return result
@@ -178,13 +191,11 @@ def get_individual_only_inputs(ngs):
     Returns:
         list: List of target files for individual calling only
     """
-    # Temporarily override config for individual-only mode
     original_mode = config.get('calling_mode', 'both')
     config['calling_mode'] = 'individual'
     
     result = get_final_inputs(ngs)
     
-    # Restore original config
     config['calling_mode'] = original_mode
     
     return result

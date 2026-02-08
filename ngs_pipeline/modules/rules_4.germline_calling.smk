@@ -205,3 +205,26 @@ rule r4_9_deepvariant:
 				--regions {input.bed} \
 				--num_shards={threads} &>{log} || true"""
 				# --regions {params.panel_capture} \
+
+rule r4_10_archive_vcfs:
+	input:
+		vcf = rules.r4_9_deepvariant.output.vcf,
+		gvcf = rules.r4_9_deepvariant.output.gvcf
+	output:
+		vcf = "archive/{run}/germline/vcf/{sample}.vcf.gz",
+		vcf_tbi = "archive/{run}/germline/vcf/{sample}.vcf.gz.tbi",
+		gvcf = "archive/{run}/germline/vcf/{sample}.gvcf.gz",
+		gvcf_tbi = "archive/{run}/germline/vcf/{sample}.gvcf.gz.tbi"
+	threads: 1
+	resources:
+		mem_mb=1000
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/{sample}.archive_vcf.bm'
+	log:
+		"results/{run}/logs/archive/{sample}.archive_vcf.log"
+	shell: """
+		mkdir -p $(dirname {output.vcf})
+		rsync -av {input.vcf}* $(dirname {output.vcf})/ &>>{log}
+		rsync -av {input.gvcf}* $(dirname {output.gvcf})/ &>>{log}
+		echo "Archived {wildcards.sample} (VCF + GVCF with indices) to network storage" >> {log}
+	"""

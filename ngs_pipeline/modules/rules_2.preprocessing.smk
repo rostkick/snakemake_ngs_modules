@@ -31,8 +31,9 @@ rule r2_1_sam_to_bam:
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_sort1.bam')
 	params:
 		samtools = config['tools']['samtools']
-	threads:
-		4
+	threads: 2
+	resources:
+		mem_mb=2000
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.{lane}.sam2bam.bm'
 	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
@@ -44,8 +45,9 @@ rule r2_2_sort_premerged_bams:
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	params:
 		samtools = config['tools']['samtools']
-	threads:
-		4
+	threads: 8
+	resources:
+		mem_mb=10000
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.{lane}.sort1.bm'
 	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
@@ -83,11 +85,14 @@ rule r2_3_merge_bams:
 		bam = temp('results/{run}/bam/{sample}.for_sort2.bam')
 	params:
 		samtools = config['tools']['samtools']
+	threads: 4
+	resources:
+		mem_mb=4000
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.merge_bam.bm'
 	shell: """
 		if [ $(echo {input.bams} | wc -w) -gt 1 ]; then
-			{params.samtools} merge {output.bam} {input.bams}
+			{params.samtools} merge -@ {threads} {output.bam} {input.bams}
 		else
 			cp {input.bams} {output.bam}
 		fi
@@ -98,8 +103,9 @@ rule r2_4_sorting_bam:
 		bam = rules.r2_3_merge_bams.output.bam
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
-	threads: 
-		4
+	threads: 8
+	resources:
+		mem_mb=10000
 	params: 
 		samtools = config['tools']['samtools']
 	benchmark:
@@ -169,7 +175,6 @@ rule r2_7_apply_bqsr:
 		'results/{run}/benchmarks/bam/{sample}.apply_bqsr.bm'
 	log: 
 		'results/{run}/logs/prep/{sample}.bqsr_apply.log'
-	threads: 4
 	shell: """{params.gatk} ApplyBQSR \
 				-R {params.ref} \
 				-I {input.bam} \
@@ -186,14 +191,20 @@ rule r2_7b_index_bam:
 
 rule r2_8_archive_bams:
 	input:
-		bam = rules.r2_7_apply_bqsr.output.bam
+		bam = rules.r2_7_apply_bqsr.output.bam,
+		bai = rules.r2_7b_index_bam.output
 	output:
-		bam = "archive/{run}/bam/{sample}.final.bam"
+		bam = "archive/{run}/bam/{sample}.final.bam",
+		bai = "archive/{run}/bam/{sample}.final.bam.bai"
+	threads: 1
+	resources:
+		mem_mb=1000
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.move_bam.bm'
 	log:
 		"results/{run}/logs/archive/{sample}.archive.log"
 	shell: """
 		rsync -av {input.bam} {output.bam} &>>{log}
-		echo "Archived {wildcards.sample} to network storage" >> {log}
-		"""
+		rsync -av {input.bai} {output.bai} &>>{log}
+		echo "Archived {wildcards.sample} (BAM + BAI) to network storage" >> {log}
+	"""

@@ -16,8 +16,9 @@ rule r1_1_read_alignment:
 	benchmark:
 		"results/{run}/benchmarks/bam/{sample}.{lane}.bwa_mem2.bm"
 	# threads: max(1, workflow.cores // max(len(ngs.SAMPLES), 1)) if config['ngs_type'] == 'WES' else max(1, workflow.cores // 2)
-	threads:
-		4
+	threads: 16
+	resources:
+		mem_mb=20000 
 	shell: """{params.bwa_mem2} mem \
 				-o {output.sam} \
 				-M -t {threads} -R '@RG\\tID:{wildcards.lane}\\tSM:{wildcards.sample}\\tLB:1\\tPL:ILLUMINA' \
