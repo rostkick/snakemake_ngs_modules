@@ -15,12 +15,11 @@ services:
       - ngs.deps
     privileged: true
     volumes:
-      - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/ # Mount the 'IMBG-Data-RAW' directory with real data,
-      - /mnt/IMBG-NGS-Analysys/:/mnt/IMBG-NGS-Analysys/ # ... 'IMBG-NGS-Analysys' directory with real data,
-      - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data # ... links, capture and config,
+      - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/:ro # Mount the 'IMBG-Data-RAW' directory with real data,
+      - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data:ro # ... links, capture and config,
       - /mnt/IMBG-NGS-Analysys/IMBG-Data-Analysys:/ngs_pipeline/app/archive # ... 'archive' directory,
       - /mnt/sdb/results:/ngs_pipeline/app/results # ... 'results' directory,
-      - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs # ... 'references'.
+      - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs:ro # ... 'references'.
       - /mnt/sdb/results/.snakemake:/ngs_pipeline/app/.snakemake # ... snakemake state for --ri restart.
-    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 30 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=4 --config calling_mode=individual"
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 30 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=4 --config calling_mode=individual force_dirty=True"
     # command: "tail -f /dev/null"
