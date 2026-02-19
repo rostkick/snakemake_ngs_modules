@@ -41,7 +41,7 @@ rule r1_1_read_alignment:
 		'results/{run}/logs/aligning/{sample}.{lane}.bwa_mem2.log'
 	params: 
 		bwa_mem2 = config['tools']['bwa_mem2'],
-		reference = config['references']['genome_fa']
+		reference = config['references']['genome_fa'],
 		samtools = config['tools']['samtools']
 	benchmark:
 		"results/{run}/benchmarks/bam/{sample}.{lane}.bwa_mem2.bm"
