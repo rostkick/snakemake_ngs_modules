@@ -5,9 +5,10 @@ rule r9_1_filter_panel_genes:
 		vcf = rules.r8_2_vep_germline_individual.output.vcf,
 		bed = config['panel_capture']['target']
 	output:
-		vcf = "results/{run}/germline/vcf/{sample}.panel_filtered.vcf.gz"
+		vcf = temp("results/{run}/germline/vcf/{sample}.panel_filtered.vcf.gz")
 	params:
 		bcftools = config['tools']['bcftools']
+	priority: 40
 	log:
 		'results/{run}/logs/parse_results/{sample}.panel_filter.log'
 	shell: """
@@ -33,9 +34,10 @@ rule r9_2_parse_vcf_individual:
 	input: 
 		vcf = rules.r9_1_filter_panel_genes.output.vcf if config.get('ngs_type') == 'panel' else rules.r8_2_vep_germline_individual.output.vcf
 	output:
-		tsv = "results/{run}/germline/tsv/{sample}.unfiltered.tsv"
+		tsv = temp("results/{run}/germline/tsv/{sample}.unfiltered.tsv")
 	params:
 		bcftools = config['tools']['bcftools']
+	priority: 40
 	log:
 		'results/{run}/logs/parse_results/{sample}.parse_vcf.log'
 	shell: """
@@ -63,7 +65,8 @@ rule r9_3_filter_tsv_individual:
 		tsv = rules.r9_2_parse_vcf_individual.output.tsv,
 		bed = config['panel_capture']['target']
 	output:
-		tsv = "results/{run}/germline/tsv/{sample}.tsv"
+		tsv = temp("results/{run}/germline/tsv/{sample}.tsv")
+	priority: 40
 	params:
 		mart = config['references']['vep_plugins_data']['custom']['mart'],
 		rank = config['references']['vep_plugins_data']['custom']['rank'],

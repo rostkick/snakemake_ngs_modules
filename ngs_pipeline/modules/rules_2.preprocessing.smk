@@ -10,8 +10,11 @@ rule r2_1_bed_to_intervals:
 		'results/{run}/benchmarks/bam/bed2intervals.bm'
 	log: 
 		'results/{run}/logs/prep/intervals.log'
+	resources:
+		mem_mb=2000,
+		runtime_min=60
 	shell: 
-		"{params.picard} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
+		"_JAVA_OPTIONS='-Xmx1600m' {params.picard} BedToIntervalList I={input.bed} SD={params.ref_dict} O={output.intervals} 2> {log}"
 
 rule r2_2_prepare_bed_to_bed:
 	input: 
@@ -31,12 +34,16 @@ rule r2_3_sam_to_bam:
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_sort1.bam')
 	params:
 		samtools = config['tools']['samtools']
-	threads: 2
+	threads: 4
 	resources:
-		mem_mb=2000
+		mem_mb=2000,
+		runtime_min={'panel': 2880, 'WES': 8640, 'WGS': 17280}.get(config['ngs_type'], 8640)
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.{lane}.sam2bam.bm'
-	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam}"
+	log:
+		'results/{run}/logs/prep/{sample}.{lane}.sam2bam.log'
+	priority: 30
+	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam} 2>{log}"
 
 rule r2_4_sort_premerged_bams:
 	input: 
@@ -45,12 +52,16 @@ rule r2_4_sort_premerged_bams:
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_merge.bam')
 	params:
 		samtools = config['tools']['samtools']
-	threads: 8
+	threads: {'panel': 2, 'WES': 4, 'WGS': 8}.get(config['ngs_type'], 4)
 	resources:
-		mem_mb=10000
+		mem_mb={'panel': 6000, 'WES': 12000, 'WGS': 24000}.get(config['ngs_type'], 12000),
+		runtime_min={'panel': 240, 'WES': 720, 'WGS': 1440}.get(config['ngs_type'], 720)
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.{lane}.sort1.bm'
-	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
+	log:
+		'results/{run}/logs/prep/{sample}.{lane}.sort1.log'
+	priority: 30
+	shell: "{params.samtools} sort -@ {threads} -m 2G -o {output.bam} {input.bam} 2>{log}"
 
 # Function to create filtered combinations of wildcards, based on the presence of input files.
 ngs_comb = set(ngs.data.loc[:, ['sample', 'lane']].itertuples(index=False, name=None))
@@ -85,16 +96,21 @@ rule r2_5_merge_bams:
 		bam = temp('results/{run}/bam/{sample}.for_sort2.bam')
 	params:
 		samtools = config['tools']['samtools']
-	threads: 4
+	threads: {'panel': 2, 'WES': 4, 'WGS': 4}.get(config['ngs_type'], 4)
 	resources:
-		mem_mb=4000
+		mem_mb={'panel': 2000, 'WES': 4000, 'WGS': 8000}.get(config['ngs_type'], 4000),
+		runtime_min={'panel': 120, 'WES': 480, 'WGS': 960}.get(config['ngs_type'], 480)
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.merge_bam.bm'
+	log:
+		'results/{run}/logs/prep/{sample}.merge_bam.log'
+	priority: 30
 	shell: """
+		set -euo pipefail
 		if [ $(echo {input.bams} | wc -w) -gt 1 ]; then
-			{params.samtools} merge -@ {threads} {output.bam} {input.bams}
+			{params.samtools} merge -@ {threads} {output.bam} {input.bams} 2>{log}
 		else
-			cp {input.bams} {output.bam}
+			cp {input.bams} {output.bam} 2>{log}
 		fi
 	"""
 
@@ -103,14 +119,18 @@ rule r2_6_sorting_bam:
 		bam = rules.r2_5_merge_bams.output.bam
 	output: 
 		bam = temp("results/{run}/bam/{sample}.for_dedup.bam")
-	threads: 8
+	threads: {'panel': 2, 'WES': 4, 'WGS': 8}.get(config['ngs_type'], 4)
 	resources:
-		mem_mb=10000
+		mem_mb={'panel': 6000, 'WES': 12000, 'WGS': 24000}.get(config['ngs_type'], 12000),
+		runtime_min={'panel': 240, 'WES': 720, 'WGS': 1440}.get(config['ngs_type'], 720)
 	params: 
 		samtools = config['tools']['samtools']
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.sort2.bm'
-	shell: "{params.samtools} sort -@ {threads} -o {output.bam} {input.bam}"
+	log:
+		'results/{run}/logs/prep/{sample}.sort2.log'
+	priority: 30
+	shell: "{params.samtools} sort -@ {threads} -m 2G -o {output.bam} {input.bam} 2>{log}"
 
 rule r2_7_mark_duplicates:
 	input: 
@@ -119,15 +139,21 @@ rule r2_7_mark_duplicates:
 		bam = temp("results/{run}/bam/{sample}.for_bqsr.bam")
 	params:
 		gatk = config['tools']['gatk'],
-		samtools = config['tools']['samtools']
+		samtools = config['tools']['samtools'],
+		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
+	resources:
+		mem_mb={'panel': 4000, 'WES': 8000, 'WGS': 20000}.get(config['ngs_type'], 8000),
+		runtime_min={'panel': 480, 'WES': 1440, 'WGS': 2880}.get(config['ngs_type'], 1440)
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.mark_dedup.bm'
 	log: 
 		log1 = "results/{run}/logs/prep/{sample}.dedup.log1",
 		log2 = "results/{run}/logs/prep/{sample}.dedup.log2"
+	priority: 30
 	shell: """
+		set -euo pipefail
 		if [ "{config[hs]}" = "True" ] || [ "{config[hs]}" = "true" ]; then
-			{params.gatk} MarkDuplicates \
+			{params.gatk} --java-options "{params.java_opts}" MarkDuplicates \
 				-I {input.bam} -O {output.bam} -M {log.log1} 2>{log.log2} \
 				--ASSUME_SORTED true
 			{params.samtools} index {output.bam}
@@ -147,12 +173,17 @@ rule r2_8_prepare_bqsr:
 		ref = config['references']['genome_fa'],
 		snps = config['references']['snps'],
 		indels = config['references']['indels'],
-		wgs_calling_regions = config['references']['wgs_calling_regions']
+		wgs_calling_regions = config['references']['wgs_calling_regions'],
+		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
+	resources:
+		mem_mb={'panel': 4000, 'WES': 8000, 'WGS': 10000}.get(config['ngs_type'], 8000),
+		runtime_min={'panel': 480, 'WES': 1440, 'WGS': 2880}.get(config['ngs_type'], 1440)
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.bqsr_recal.bm'
 	log: 
 		'results/{run}/logs/prep/{sample}.bqsr_recal.log'
-	shell: """{params.gatk} BaseRecalibrator \
+	priority: 30
+	shell: """{params.gatk} --java-options "{params.java_opts}" BaseRecalibrator \
 				-R {params.ref} \
 				-I {input.bam} \
 				--known-sites {params.snps} \
@@ -169,12 +200,17 @@ rule r2_9_apply_bqsr:
 	params:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
-		panel_capture = config['panel_capture']['target']
+		panel_capture = config['panel_capture']['target'],
+		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
+	resources:
+		mem_mb={'panel': 4000, 'WES': 8000, 'WGS': 10000}.get(config['ngs_type'], 8000),
+		runtime_min={'panel': 240, 'WES': 720, 'WGS': 1440}.get(config['ngs_type'], 720)
 	benchmark:
 		'results/{run}/benchmarks/bam/{sample}.apply_bqsr.bm'
 	log: 
 		'results/{run}/logs/prep/{sample}.bqsr_apply.log'
-	shell: """{params.gatk} ApplyBQSR \
+	priority: 30
+	shell: """{params.gatk} --java-options "{params.java_opts}" ApplyBQSR \
 				-R {params.ref} \
 				-I {input.bam} \
 				-L {params.panel_capture} \
@@ -186,4 +222,8 @@ rule r2_10_index_bam:
 	output: "results/{run}/bam/{sample}.final.bam.bai"
 	params:
 		samtools = config['tools']['samtools']
+	resources:
+		mem_mb=1000,
+		runtime_min=60
+	priority: 30
 	shell: "{params.samtools} index {input}"

@@ -7,12 +7,18 @@ rule r3_1_calculate_hs_metrics:
 	benchmark:
 		'results/{run}/benchmarks/bam/hs_metrics/{sample}.hs_metrics.bm'
 	log: 'results/{run}/logs/hs_metrics/{sample}.hs_metrics.log'
+	priority: 20
+	resources:
+		mem_mb=4000,
+		runtime_min=240
 	params:
 		picard = config['tools']['picard_old'],
-		fasta_reference = config['references']['genome_fa']
-	shell: """java -jar {params.picard} CalculateHsMetrics \
+		fasta_reference = config['references']['genome_fa'],
+		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
+	shell: """java -jar {params.java_opts} {params.picard} CalculateHsMetrics \
 				INPUT={input.bam} \
 				OUTPUT={output.tsv} \
+				REFERENCE_SEQUENCE={params.fasta_reference} \
 				BAIT_INTERVALS={input.intervals} \
 				TARGET_INTERVALS={input.intervals} \
 				NEAR_DISTANCE=0 2>{log}"""

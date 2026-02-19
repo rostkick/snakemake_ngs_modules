@@ -42,6 +42,15 @@ def get_final_inputs(ngs):
             ]
             germline_inputs += germline_inputs_cohort
 
+        # Archive GATK HC GVCF (always when joint/both — valuable for future joint calling)
+        if calling_mode in ['joint', 'both']:
+            gvcf_suffix = '.wgs.gatk.gvcf.gz' if config['ngs_type'] == 'WGS' else '.gatk.gvcf.gz'
+            archive_gatk_gvcfs = [
+                f"archive/{config['run']}/germline/gvcf/{sample}{gvcf_suffix}"
+                for sample in ngs.GRM_SAMPLES
+            ]
+            germline_inputs += archive_gatk_gvcfs
+
         # Individual calling (per-sample analysis)
         if calling_mode in ['individual', 'both']:
             # Final XLSX (remains in results)
@@ -83,8 +92,19 @@ def get_final_inputs(ngs):
             f"results/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
             for sample in ngs.SAMPLES
         ]
+        # Archive HS metrics
+        archive_hs = [
+            f"archive/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
+            for sample in ngs.SAMPLES
+        ]
+        metrics += archive_hs
 
-    input_files = germline_inputs + somatic_inputs + metrics
+    # FASTQ checksums (always — for full traceability)
+    provenance = [
+        f"results/{config['run']}/provenance/fastq_checksums.md5"
+    ]
+
+    input_files = germline_inputs + somatic_inputs + metrics + provenance
     return input_files
 
 
