@@ -33,7 +33,8 @@ rule r2_3_sam_to_bam:
 	output:
 		bam = temp('results/{run}/bam/{sample}.{lane}.for_sort1.bam')
 	params:
-		samtools = config['tools']['samtools']
+		samtools = config['tools']['samtools'],
+		release_lock_script = "modules/scripts/release_staged_lock.py"
 	threads: 4
 	resources:
 		mem_mb=2000,
@@ -43,7 +44,11 @@ rule r2_3_sam_to_bam:
 	log:
 		'results/{run}/logs/prep/{sample}.{lane}.sam2bam.log'
 	priority: 30
-	shell: "{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam} 2>{log}"
+	shell: """
+		set -euo pipefail
+		{params.samtools} view -@ {threads} -bS -o {output.bam} {input.sam} 2>{log}
+		python {params.release_lock_script} --lock-dir .staging_locks --key {wildcards.sample}.{wildcards.lane} --log {log}
+	"""
 
 rule r2_4_sort_premerged_bams:
 	input: 

@@ -18,15 +18,16 @@ rule r1_0_stage_fastq:
 	priority: 10
 	threads: 1
 	resources:
-		mem_mb=1000,
+		mem_mb=100,
 		runtime_min=720,
-		nfs_io=1
-	shell: """
-		set -euo pipefail
-		cp {input.fr} {output.fr} 2>{log}
-		cp {input.rr} {output.rr} 2>>{log}
-		echo "Staged $(du -sh {output.fr} {output.rr} | awk '{{print $1}}' | paste -sd+ | bc 2>/dev/null || echo '?') to local disk" >>{log}
-	"""
+		staging_slots=1
+	params:
+		lock_dir=".staging_locks",
+		max_staged=6,
+		wait_sec=30,
+		part_ttl_min=120
+	script:
+		"scripts/stage_fastq_with_lock.py"
 
 rule r1_1_read_alignment:
 	wildcard_constraints:

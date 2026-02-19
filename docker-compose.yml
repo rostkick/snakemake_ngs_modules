@@ -21,5 +21,5 @@ services:
       - /mnt/sdb/results:/ngs_pipeline/app/results # ... 'results' directory,
       - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs:ro # ... 'references'.
       - /mnt/sdb/results/.snakemake:/ngs_pipeline/app/.snakemake # ... snakemake state for --ri restart.
-    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 30 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=4 --config calling_mode=individual force_dirty=True"
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 30 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=2 staging_slots=3 --config calling_mode=individual force_dirty=True"
     # command: "tail -f /dev/null"
