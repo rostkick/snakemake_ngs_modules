@@ -13,7 +13,8 @@ tools:
   picard_old: "/ngs_pipeline/tools/picard-tools-2.0.1/picard.jar"
   bcftools: "/opt/conda/envs/smk/bin/bcftools"
   deepvariant: "/ngs_pipeline/tools/deepvariant_latest.sif"
-  vep: 
+  glnexus: "/ngs_pipeline/tools/glnexus_v1.4.1.sif"
+  vep:
     path: "/ngs_pipeline/tools/ensembl-vep_latest.sif"
     cache: "/ngs_pipeline/app/ngs_refs/vep_cache"
     plugins: "/ngs_pipeline/app/ngs_refs/VEP_plugins"

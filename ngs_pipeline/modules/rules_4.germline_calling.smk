@@ -1,277 +1,29 @@
-rule r4_1_haplotypecaller:
-	input: 
-		bam = rules.r2_9_apply_bqsr.output.bam
-	output:
-		gvcf = temp("results/{run}/germline/vcf/{sample}.gatk.gvcf.gz"),
-		gvcf_tbi = temp("results/{run}/germline/vcf/{sample}.gatk.gvcf.gz.tbi")
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/{sample}.haplotypecaller.bm'
-	log: 'results/{run}/logs/germline/{sample}.haplotypecaller.log'
-	priority: 35
-	params:
-		gatk = config['tools']['gatk'],
-		ref = config['references']['genome_fa'],
-		panel_capture = config['panel_capture']['target'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m -XX:ParallelGCThreads=1"
-	threads: {'panel': 2, 'WES': 4, 'WGS': 4}.get(config['ngs_type'], 4)
-	resources:
-		mem_mb={'panel': 6000, 'WES': 12000, 'WGS': 12000}.get(config['ngs_type'], 12000),
-		runtime_min={'panel': 720, 'WES': 5760, 'WGS': 5760}.get(config['ngs_type'], 5760)
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" \
-			HaplotypeCaller \
-			-R {params.ref} \
-			-I {input.bam} \
-			-O {output.gvcf} \
-			-L {params.panel_capture} \
-			-ERC GVCF \
-			--native-pair-hmm-threads {threads} 2>{log}
-	"""
+_glnexus_config = 'DeepVariantWGS' if config['ngs_type'] == 'WGS' else 'DeepVariantWES'
 
-rule r4_2_haplotypecaller_wgs:
-	input: 
-		bam = rules.r2_9_apply_bqsr.output.bam
-	output:
-		gvcf = temp("results/{run}/germline/vcf/{sample}.wgs.gatk.gvcf.gz"),
-		gvcf_tbi = temp("results/{run}/germline/vcf/{sample}.wgs.gatk.gvcf.gz.tbi")
-	log: 'results/{run}/logs/germline/{sample}.haplotypecaller_wgs.log'
-	priority: 35
-	params:
-		gatk = config['tools']['gatk'],
-		ref = config['references']['genome_fa'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m -XX:ParallelGCThreads=1"
-	threads: 4
-	resources:
-		mem_mb=12000,
-		runtime_min=11520
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" \
-			HaplotypeCaller \
-			-R {params.ref} \
-			-I {input.bam} \
-			-O {output.gvcf} \
-			-ERC GVCF \
-			--native-pair-hmm-threads {threads} 2>{log}
-	"""
 
-rule r4_3_combine_gvcfs:
-	input: 
-		gvcfs = expand("results/{{run}}/germline/vcf/{sample}.gatk.gvcf.gz", sample=ngs.GRM_SAMPLES) \
-					if config['ngs_type'] != 'WGS' else \
-						expand("results/{{run}}/germline/vcf/{sample}.wgs.gatk.gvcf.gz", sample=ngs.GRM_SAMPLES),
-		gvcf_tbis = expand("results/{{run}}/germline/vcf/{sample}.gatk.gvcf.gz.tbi", sample=ngs.GRM_SAMPLES) \
-					if config['ngs_type'] != 'WGS' else \
-						expand("results/{{run}}/germline/vcf/{sample}.wgs.gatk.gvcf.gz.tbi", sample=ngs.GRM_SAMPLES)
-	output: 
-		gvcf = temp("results/{run}/germline/vcf/cohort.g.vcf.gz")
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/combine_gvcf.bm'
-	log: 'results/{run}/logs/germline/combinegvcfs.log'
-	params:
-		gatk = config['tools']['gatk'],
-		ref = config['references']['genome_fa'],
-		gvcf=lambda wc, input: [f'--variant {i}' for i in input.gvcfs],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.6)}m"
-	threads: 1
-	resources:
-		mem_mb={'panel': 8000, 'WES': 24000, 'WGS': 32000}.get(config['ngs_type'], 24000),
-		runtime_min={'panel': 240, 'WES': 1440, 'WGS': 2880}.get(config['ngs_type'], 1440)
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" CombineGVCFs \
-			-R {params.ref} \
-			{params.gvcf} \
-			-O {output.gvcf} 2>{log}
-	"""
-
-rule r4_4_genotype_gvcfs:
-	input: 
-		gvcf = rules.r4_3_combine_gvcfs.output.gvcf
-	output: 
-		vcf = temp("results/{run}/germline/vcf/cohort.to_filters.vcf.gz")
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/genotype_gvcf.bm'
-	log: 'results/{run}/logs/germline/genotypegvcfs.log'
-	params:
-		gatk = config['tools']['gatk'],
-		fasta_reference=config['references']['genome_fa'],
-		panel_capture = config['panel_capture']['target'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.5)}m"
-	threads: 1
-	resources:
-		mem_mb={'panel': 4000, 'WES': 24000, 'WGS': 24000}.get(config['ngs_type'], 24000),
-		runtime_min={'panel': 120, 'WES': 1440, 'WGS': 2880}.get(config['ngs_type'], 1440)
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" GenotypeGVCFs \
-			-R {params.fasta_reference} \
-			-L {params.panel_capture} \
-			-V {input.gvcf} \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_5_genotype_gvcfs_wgs:
-	input: 
-		gvcf = rules.r4_3_combine_gvcfs.output.gvcf
-	output: 
-		vcf = temp("results/{run}/germline/vcf/cohort.to_filters.wgs.vcf.gz")
-	log: 'results/{run}/logs/germline/genotypegvcfs_wgs.log'
-	params:
-		gatk = config['tools']['gatk'],
-		fasta_reference=config['references']['genome_fa'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.5)}m"
-	threads: 1
-	resources:
-		mem_mb={'panel': 4000, 'WES': 24000, 'WGS': 24000}.get(config['ngs_type'], 24000),
-		runtime_min={'panel': 120, 'WES': 2880, 'WGS': 5760}.get(config['ngs_type'], 2880)
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" GenotypeGVCFs \
-			-R {params.fasta_reference} \
-			-V {input.gvcf} \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_6_select_variants_snp:
+rule r4_1_deepvariant:
 	input:
-		vcf = rules.r4_4_genotype_gvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_5_genotype_gvcfs_wgs.output.vcf
-	output: 
-		vcf = temp("results/{run}/germline/vcf/snps.vcf.gz")
-	params:
-		gatk = config['tools']['gatk'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/select_snp.bm'
-	log: 'results/{run}/logs/germline/select_snp.log'
-	threads: 1
-	resources:
-		mem_mb=4000,
-		runtime_min=240
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" SelectVariants \
-			-V {input.vcf} \
-			-select-type SNP \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_7_select_variants_indel:
-	input:
-		vcf = rules.r4_4_genotype_gvcfs.output.vcf if config['ngs_type'] != 'WGS' else rules.r4_5_genotype_gvcfs_wgs.output.vcf
-	output:
-		vcf = temp("results/{run}/germline/vcf/indel.vcf.gz")
-	params:
-		gatk = config['tools']['gatk'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
-	log: 'results/{run}/logs/germline/select_indel.log'
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/select_indels.bm'
-	threads: 1
-	resources:
-		mem_mb=4000,
-		runtime_min=240
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" SelectVariants \
-			-V {input.vcf} \
-			-select-type INDEL \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_8_variant_filtration_snp:
-	input: 
-		vcf = rules.r4_6_select_variants_snp.output.vcf
-	output: 
-		vcf = temp("results/{run}/germline/vcf/snps.filtered.vcf.gz")
-	params:
-		gatk = config['tools']['gatk'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/apply_hard_filters_snp.bm'
-	log: 'results/{run}/logs/germline/variantfilttation_snp.log'
-	threads: 1
-	resources:
-		mem_mb=4000,
-		runtime_min=240
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" VariantFiltration \
-			-V {input.vcf} \
-			-filter "QD < 2.0" --filter-name "QD2" \
-			-filter "QUAL < 30.0" --filter-name "QUAL30" \
-			-filter "SOR > 3.0" --filter-name "SOR3" \
-			-filter "FS > 60.0" --filter-name "FS60" \
-			-filter "MQ < 40.0" --filter-name "MQ40" \
-			-filter "MQRankSum < -12.5" --filter-name "MQRankSum-12.5" \
-			-filter "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum-8" \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_9_variant_filtration_indel:
-	input:
-		vcf = rules.r4_7_select_variants_indel.output.vcf
-	output: 
-		vcf = temp("results/{run}/germline/vcf/indel.filtered.vcf.gz")
-	params:
-		gatk = config['tools']['gatk'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/apply_hard_filters_indels.bm'
-	log: "results/{run}/logs/germline/variantfiltration_indel.log"
-	threads: 1
-	resources:
-		mem_mb=4000,
-		runtime_min=240
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" VariantFiltration \
-			-V {input.vcf} \
-			-filter "QD < 2.0" --filter-name "QD2" \
-			-filter "QUAL < 30.0" --filter-name "QUAL30" \
-			-filter "FS > 200.0" --filter-name "FS200" \
-			-filter "ReadPosRankSum < -20.0" --filter-name "ReadPosRankSum-20" \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_10_merge_vcfs:
-	input: 
-		snps = rules.r4_8_variant_filtration_snp.output.vcf,
-		indels = rules.r4_9_variant_filtration_indel.output.vcf
-	output: 
-		vcf = temp("results/{run}/germline/vcf/cohort.vcf.gz")
-	params:
-		gatk = config['tools']['gatk'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.8)}m"
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/merge_vcfs.bm'
-	log: "results/{run}/logs/germline/mergevcfs.log"
-	threads: 1
-	resources:
-		mem_mb=4000,
-		runtime_min=120
-	shell: """
-		{params.gatk} --java-options "{params.java_opts}" MergeVcfs \
-			-I {input.snps} \
-			-I {input.indels} \
-			-O {output.vcf} 2>{log}
-	"""
-
-rule r4_11_deepvariant:
-	input: 
 		bam = rules.r2_9_apply_bqsr.output.bam,
 		bed = rules.r2_2_prepare_bed_to_bed.output.bed
-	output: 
-		vcf = temp("results/{run}/germline/vcf/{sample}.vcf.gz"),
-		vcf_tbi = temp("results/{run}/germline/vcf/{sample}.vcf.gz.tbi"),
-		gvcf = temp("results/{run}/germline/vcf/{sample}.gvcf.gz"),
+	output:
+		vcf      = temp("results/{run}/germline/vcf/{sample}.vcf.gz"),
+		vcf_tbi  = temp("results/{run}/germline/vcf/{sample}.vcf.gz.tbi"),
+		gvcf     = temp("results/{run}/germline/vcf/{sample}.gvcf.gz"),
 		gvcf_tbi = temp("results/{run}/germline/vcf/{sample}.gvcf.gz.tbi")
 	benchmark:
-		'results/{run}/benchmarks/germline/vcf/{sample}.dv_calling.bm'
+		'results/{run}/benchmarks/germline/vcf/{sample}.deepvariant.bm'
 	log:
 		'results/{run}/logs/germline/{sample}.deepvariant.log'
 	priority: 35
 	params:
 		singularity = config['tools']['singularity'],
 		deepvariant = config['tools']['deepvariant'],
-		model_type = lambda wc: 'WES' if config['ngs_type'] in ['WES', 'panel'] else config['ngs_type'],
-		ref = config['references']['genome_fa']
+		model_type  = lambda wc: 'WES' if config['ngs_type'] in ['WES', 'panel'] else config['ngs_type'],
+		ref         = config['references']['genome_fa']
 	threads: {'panel': 4, 'WES': 8, 'WGS': 16}.get(config['ngs_type'], 8)
 	resources:
-		mem_mb={'panel': 8000, 'WES': 16000, 'WGS': 32000}.get(config['ngs_type'], 16000),
-		runtime_min={'panel': 720, 'WES': 8640, 'WGS': 17280}.get(config['ngs_type'], 8640)
+		mem_mb      = {'panel': 8000,  'WES': 16000, 'WGS': 32000}.get(config['ngs_type'], 16000),
+		runtime_min = {'panel': 720,   'WES': 8640,  'WGS': 17280}.get(config['ngs_type'], 8640)
 	shell: """
 		{params.singularity} run \
 			-B /ngs_pipeline:/ngs_pipeline \
@@ -283,4 +35,76 @@ rule r4_11_deepvariant:
 			--ref={params.ref} \
 			--regions {input.bed} \
 			--num_shards={threads} &>{log}
+	"""
+
+
+rule r4_2_glnexus_joint:
+	input:
+		gvcf     = expand(rules.r4_1_deepvariant.output.gvcf,     run=config['run'], sample=ngs.GRM_SAMPLES),
+		gvcf_tbi = expand(rules.r4_1_deepvariant.output.gvcf_tbi, run=config['run'], sample=ngs.GRM_SAMPLES)
+	output:
+		bcf = temp("results/{run}/germline/vcf/cohort.glnexus.bcf")
+	params:
+		singularity    = config['tools']['singularity'],
+		glnexus_sif    = config['tools']['glnexus'],
+		glnexus_config = _glnexus_config,
+		db_dir         = lambda wc: f"/tmp/glnexus_db_{wc.run}",
+		extra_gvcfs    = " ".join(
+			sorted(__import__('glob').glob(
+				config['references']['wes_joint_gvcfs'].rstrip('/') + '/*.gvcf.gz'
+			))
+		) if config['references'].get('wes_joint_gvcfs', '') else ''
+	threads: 8
+	resources:
+		mem_mb      = {'panel': 8000,  'WES': 16000, 'WGS': 32000}.get(config['ngs_type'], 16000),
+		runtime_min = {'panel': 240,   'WES': 720,   'WGS': 2880}.get(config['ngs_type'], 720)
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/glnexus_joint.bm'
+	log:
+		'results/{run}/logs/germline/glnexus_joint.log'
+	shell: """
+		set -euo pipefail
+		rm -rf {params.db_dir}
+		{params.singularity} exec \
+			-B /ngs_pipeline:/ngs_pipeline \
+			{params.glnexus_sif} \
+			glnexus_cli \
+			--config  {params.glnexus_config} \
+			--dir     {params.db_dir} \
+			--threads {threads} \
+			{params.extra_gvcfs} \
+			{input.gvcf} \
+			> {output.bcf} \
+			2> {log}
+		rm -rf {params.db_dir}
+	"""
+
+
+rule r4_3_bcf_to_vcf:
+	input:
+		bcf = rules.r4_2_glnexus_joint.output.bcf
+	output:
+		vcf = temp("results/{run}/germline/vcf/cohort.vcf.gz"),
+		tbi = temp("results/{run}/germline/vcf/cohort.vcf.gz.tbi")
+	params:
+		bcftools = config['tools']['bcftools'],
+		ref      = config['references']['genome_fa']
+	threads: 4
+	resources:
+		mem_mb      = 4000,
+		runtime_min = 120
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/bcf_to_vcf.bm'
+	log:
+		'results/{run}/logs/germline/bcf_to_vcf.log'
+	shell: """
+		set -euo pipefail
+		{params.bcftools} view {input.bcf} 2>>{log} | \
+		{params.bcftools} norm \
+			-m -any \
+			-f {params.ref} \
+			--output-type z \
+			--threads {threads} \
+			-o {output.vcf} 2>>{log}
+		{params.bcftools} index -t {output.vcf} 2>>{log}
 	"""
