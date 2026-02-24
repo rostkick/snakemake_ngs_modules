@@ -1,10 +1,11 @@
 import os
 from modules.scripts.params_builder import *
 from modules.scripts.get_input import get_final_inputs
+from modules.scripts.provenance import write_provenance
 
 
 configfile: 'data/configure.run_settings.yml'
-configfile: 'configure.solid_deps.yml' # will be merged with current settings configuration from 'configure.run_settings.yml'
+configfile: 'configure.solid_deps.yml'
 
 if config['assembly'] == 'GRCh38':
 	configfile: 'configure.references38.yml'
@@ -35,6 +36,12 @@ wildcard_constraints:
 
 rule all:
 	input: get_final_inputs(ngs)
+
+onstart:
+	write_provenance(
+		run_name=config['run'],
+		force_dirty=config.get('force_dirty', False) in [True, 'True', 'true'],
+	)
 
 include: config["snakemake_modules"] + "rules_1.aligning.smk"
 include: config["snakemake_modules"] + "rules_2.preprocessing.smk"
