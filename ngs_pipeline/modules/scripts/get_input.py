@@ -3,131 +3,158 @@ from snakemake.workflow import config
 
 
 def get_final_inputs(ngs):
-    """
-    Return a list of input files for all samples based on calling strategy.
-
-    Args:
-        ngs: NGS data object containing sample information
-
-    Returns:
-        list: List of target files based on configuration
-    """
     germline_inputs = []
     somatic_inputs = []
     metrics = []
 
-    calling_mode = config.get('calling_mode', 'both')
+    calling_mode = config.get('calling_mode', 'joint')
+    ngs_type = config['ngs_type']
+    run = config['run']
+
+    _panel_names = [
+        p['name'] for p in config['references'].get('wes_gene_panels', [])
+    ] if ngs_type == 'WES' else []
 
     if ngs.GRM:
 
-        # Archive BAM files (rule r0_1_archive_bams)
-        archive_bams = [
-            f"archive/{config['run']}/bam/{sample}.final.bam"
+        # Archive BAM files (r0_1)
+        germline_inputs += [
+            f"archive/{run}/bam/{sample}.final.bam"
             for sample in ngs.SAMPLES
         ]
-        germline_inputs += archive_bams
 
-        # Archive per-sample DeepVariant VCF + gVCF (rule r0_2_archive_vcfs)
-        if calling_mode in ['individual', 'both']:
-            archive_vcfs = [
-                f"archive/{config['run']}/germline/vcf/{sample}.vcf.gz"
+        # Archive per-sample DeepVariant VCF + gVCF (r0_2, individual mode only)
+        if calling_mode == 'individual':
+            germline_inputs += [
+                f"archive/{run}/germline/vcf/{sample}.vcf.gz"
                 for sample in ngs.GRM_SAMPLES
             ]
-            germline_inputs += archive_vcfs
 
-        # Joint calling — cohort-level annotated VCF
-        if calling_mode in ['joint', 'both']:
+        # Joint calling — cohort-level annotated VCF (r8_1)
+        if calling_mode == 'joint':
             germline_inputs += [
-                f"results/{config['run']}/germline/vcf/cohort.annotated.vcf.gz"
+                f"results/{run}/germline/vcf/cohort.annotated.vcf.gz"
             ]
 
-        # Individual calling — per-sample XLSX + archived TSV
-        if calling_mode in ['individual', 'both']:
+        if ngs_type == 'WES':
+            # Per-panel xlsx (r9_8)
             germline_inputs += [
-                f"results/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
+                f"results/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+                for panel_name in _panel_names
+            ]
+            # Per-sample full exome xlsx (r9_9)
+            germline_inputs += [
+                f"results/{run}/germline/xlsx/wes_clinical.{run}.germline.results.xlsx"
+            ]
+            # Archive panel TSVs (r0_4)
+            germline_inputs += [
+                f"archive/{run}/germline/tsv/{sample}.{panel_name}.tsv"
+                for sample in ngs.GRM_SAMPLES
+                for panel_name in _panel_names
+            ]
+            # Archive full WES TSVs (r0_5)
+            germline_inputs += [
+                f"archive/{run}/germline/tsv/{sample}.wes_clinical.tsv"
+                for sample in ngs.GRM_SAMPLES
+            ]
+            # Archive raw unfiltered TSVs (r0_9)
+            germline_inputs += [
+                f"archive/{run}/germline/tsv/{sample}.raw.tsv"
+                for sample in ngs.GRM_SAMPLES
+            ]
+            # Archive panel xlsx (r0_10)
+            germline_inputs += [
+                f"archive/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+                for panel_name in _panel_names
+            ]
+            # Archive wes_clinical xlsx (r0_11)
+            germline_inputs += [
+                f"archive/{run}/germline/xlsx/wes_clinical.{run}.germline.results.xlsx"
+            ]
+            # Archive gVCFs for future joint calling (r0_12)
+            germline_inputs += [
+                f"archive/{run}/germline/gvcf/{sample}.gvcf.gz"
+                for sample in ngs.GRM_SAMPLES
+            ]
+            # Archive annotated cohort VCF (r0_13)
+            germline_inputs += [
+                f"archive/{run}/germline/vcf/cohort.annotated.vcf.gz"
             ]
 
-            # Archive XLSX (rule r0_4_archive_xlsx)
+        else:
+            # panel ngs_type and WGS — single cohort xlsx (r9_10) + archived TSVs (r0_3)
             germline_inputs += [
-                f"archive/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
+                f"results/{run}/germline/xlsx/individual.{run}.germline.results.xlsx",
+                f"archive/{run}/germline/xlsx/individual.{run}.germline.results.xlsx",
             ]
-
-            # Archive TSV files (rule r0_3_archive_tsv_individual)
             germline_inputs += [
-                f"archive/{config['run']}/germline/tsv/{sample}.tsv"
+                f"archive/{run}/germline/tsv/{sample}.tsv"
                 for sample in ngs.GRM_SAMPLES
             ]
 
         # Somatic calling — paired germline vs tumour
         if ngs.TMR:
             somatic_inputs += [
-                f"results/{config['run']}/somatic/{patient}/somatic_annotated.vcf.gz"
+                f"results/{run}/somatic/{patient}/somatic_annotated.vcf.gz"
                 for patient in ngs.GRM_VS_TMR_PATIENTS
             ]
 
     # Tumour-only samples
     if len(ngs.ONLY_TMR_PATIENTS) > 0:
         somatic_inputs += [
-            f"results/{config['run']}/somatic/{patient}/somatic_annotated_tonly.vcf.gz"
+            f"results/{run}/somatic/{patient}/somatic_annotated_tonly.vcf.gz"
             for patient in ngs.ONLY_TMR_PATIENTS
         ]
 
     # Hybrid-capture quality metrics for WES and panel samples
-    if config['ngs_type'] in ['WES', 'panel']:
-        metrics = [
-            f"results/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
+    if ngs_type in ['WES', 'panel']:
+        metrics += [
+            f"results/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv"
             for sample in ngs.SAMPLES
         ]
-        # Archive HS metrics (rule r0_7_archive_hs_metrics)
         metrics += [
-            f"archive/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
+            f"archive/{run}/bam/hs_metrics/{sample}.hs_metrics.tsv"
             for sample in ngs.SAMPLES
         ]
 
-    # FASTQ checksums — always produced for full input traceability
+    # FASTQ checksums (r0_7)
     provenance = [
-        f"results/{config['run']}/provenance/fastq_checksums.md5"
+        f"results/{run}/provenance/fastq_checksums.md5"
     ]
 
     return germline_inputs + somatic_inputs + metrics + provenance
 
 
 def get_germline_calling_targets(ngs):
-    """
-    Get only germline calling targets based on configuration.
-
-    Args:
-        ngs: NGS data object containing sample information
-
-    Returns:
-        list: List of germline target files
-    """
+    calling_mode = config.get('calling_mode', 'joint')
+    ngs_type = config['ngs_type']
+    run = config['run']
     targets = []
 
-    calling_mode = config.get('calling_mode', 'both')
+    _panel_names = [
+        p['name'] for p in config['references'].get('wes_gene_panels', [])
+    ] if ngs_type == 'WES' else []
 
     if ngs.GRM:
-        if calling_mode in ['joint', 'both']:
-            targets.append(f"results/{config['run']}/germline/vcf/cohort.annotated.vcf.gz")
-
-        if calling_mode in ['individual', 'both']:
+        if calling_mode == 'joint':
+            targets.append(f"results/{run}/germline/vcf/cohort.annotated.vcf.gz")
+        if ngs_type == 'WES':
+            targets += [
+                f"results/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+                for panel_name in _panel_names
+            ]
+            targets += [
+                f"results/{run}/germline/xlsx/wes_clinical.{run}.germline.results.xlsx"
+            ]
+        else:
             targets.append(
-                f"results/{config['run']}/germline/xlsx/individual.{config['run']}.germline.results.xlsx"
+                f"results/{run}/germline/xlsx/individual.{run}.germline.results.xlsx"
             )
 
     return targets
 
 
 def get_somatic_calling_targets(ngs):
-    """
-    Get only somatic calling targets.
-
-    Args:
-        ngs: NGS data object containing sample information
-
-    Returns:
-        list: List of somatic target files
-    """
     targets = []
 
     if ngs.GRM and ngs.TMR:
@@ -146,58 +173,9 @@ def get_somatic_calling_targets(ngs):
 
 
 def get_metrics_targets(ngs):
-    """
-    Get quality metrics targets for WES and panel samples.
-
-    Args:
-        ngs: NGS data object containing sample information
-
-    Returns:
-        list: List of metrics target files
-    """
     if config['ngs_type'] in ['WES', 'panel']:
         return [
             f"results/{config['run']}/bam/hs_metrics/{sample}.hs_metrics.tsv"
             for sample in ngs.SAMPLES
         ]
     return []
-
-
-def get_joint_only_inputs(ngs):
-    """
-    Get inputs for joint calling only mode.
-
-    Args:
-        ngs: NGS data object containing sample information
-
-    Returns:
-        list: List of target files for joint calling only
-    """
-    original_mode = config.get('calling_mode', 'both')
-    config['calling_mode'] = 'joint'
-
-    result = get_final_inputs(ngs)
-
-    config['calling_mode'] = original_mode
-
-    return result
-
-
-def get_individual_only_inputs(ngs):
-    """
-    Get inputs for individual calling only mode.
-
-    Args:
-        ngs: NGS data object containing sample information
-
-    Returns:
-        list: List of target files for individual calling only
-    """
-    original_mode = config.get('calling_mode', 'both')
-    config['calling_mode'] = 'individual'
-
-    result = get_final_inputs(ngs)
-
-    config['calling_mode'] = original_mode
-
-    return result

@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import sys
 from openpyxl.worksheet.hyperlink import Hyperlink
+from openpyxl.styles import Font
 
 log_file = snakemake.log[0]
 input_files = snakemake.input.tsv
@@ -31,34 +32,39 @@ def merge_tsv_with_legend(input_files, output_file, params_df):
         legend_df = pd.DataFrame(legend_data, columns=['Sheet Name', 'Sample'])
         legend_df.to_excel(writer, sheet_name='Legend', index=False)
         
-        # First create all data sheets
+        # Create all data sheets with startrow=1 to leave row 1 for back-link
         for data in sheet_data:
             df = pd.read_csv(data['file'], sep='\t')
-            df.to_excel(writer, sheet_name=data['full_name'], index=False, float_format='%.8f')
+            df.to_excel(writer, sheet_name=data['full_name'], index=False,
+                        float_format='%.8f', startrow=1)
         
-        # Now add hyperlinks to Legend sheet
         workbook = writer.book
+
+        # --- Legend sheet: format headers + add hyperlinks to sample sheets ---
         legend_ws = workbook['Legend']
         
-        # Format headers
         for cell in legend_ws[1]:
             cell.font = cell.font.copy(bold=True)
         
-        # Add hyperlinks to sheet names using Hyperlink object with text override
         for i, data in enumerate(sheet_data, start=2):
             sheet_name = data['full_name']
             cell = legend_ws.cell(row=i, column=1)
-            
-            # Create hyperlink object that works for navigation
             hyperlink_obj = Hyperlink(ref="", location=f"'{sheet_name}'!A1")
-            # Override the display text to show the sheet name instead of gid reference
             hyperlink_obj.display = sheet_name
-            
-            # Apply the hyperlink to the cell
             cell.hyperlink = hyperlink_obj
-            cell.value = sheet_name  # Ensure cell value is set
-            # Style the cell to look like a hyperlink
+            cell.value = sheet_name
             cell.font = cell.font.copy(color="0000FF", underline="single")
+
+        # --- Sample sheets: add back-link to Legend in A1 ---
+        for data in sheet_data:
+            sheet_name = data['full_name']
+            ws = workbook[sheet_name]
+            back_cell = ws.cell(row=1, column=1)
+            back_cell.value = "← Legend"
+            hyperlink_obj = Hyperlink(ref="", location="'Legend'!A1")
+            hyperlink_obj.display = "← Legend"
+            back_cell.hyperlink = hyperlink_obj
+            back_cell.font = Font(color="0000FF", underline="single", bold=True)
 
 with open(log_file, "w") as f:
     sys.stderr = sys.stdout = f

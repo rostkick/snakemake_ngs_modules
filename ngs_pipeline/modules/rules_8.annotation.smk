@@ -1,8 +1,32 @@
-rule r8_1_vep_germline_joint:
+rule r8_1_strip_genotypes:
+	"""Remove sample genotypes before VEP — annotate sites only, then restore genotypes.
+	Significantly reduces VEP runtime on large cohorts.
+	"""
 	input:
 		vcf = rules.r4_3_bcf_to_vcf.output.vcf
 	output:
-		vcf = 'results/{run}/germline/vcf/cohort.annotated.vcf.gz'
+		vcf = temp("results/{run}/germline/vcf/cohort.sites.vcf.gz")
+	params:
+		bcftools = config['tools']['bcftools']
+	resources:
+		mem_mb      = 2000,
+		runtime_min = 30
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/strip_genotypes.bm'
+	log:
+		'results/{run}/logs/germline/strip_genotypes.log'
+	shell: """
+		set -euo pipefail
+		{params.bcftools} view -G {input.vcf} -Oz -o {output.vcf} 2>{log}
+		{params.bcftools} index -t {output.vcf} 2>>{log}
+	"""
+
+
+rule r8_2_vep_germline_joint:
+	input:
+		vcf = rules.r8_1_strip_genotypes.output.vcf
+	output:
+		vcf = temp("results/{run}/germline/vcf/cohort.sites.annotated.vcf.gz")
 	params:
 		singularity    = config['tools']['singularity'],
 		assembly       = config['assembly'],
@@ -62,7 +86,38 @@ rule r8_1_vep_germline_joint:
 				--fork {threads} 2>{log}
 			"""
 
-use rule r8_1_vep_germline_joint as r8_2_vep_germline_individual with:
+
+rule r8_3_restore_genotypes:
+	"""Restore sample genotypes by merging annotated sites back into the cohort VCF."""
+	input:
+		annotated = rules.r8_2_vep_germline_joint.output.vcf,
+		cohort    = rules.r4_3_bcf_to_vcf.output.vcf
+	output:
+		vcf = "results/{run}/germline/vcf/cohort.annotated.vcf.gz",
+		tbi = "results/{run}/germline/vcf/cohort.annotated.vcf.gz.tbi"
+	params:
+		bcftools = config['tools']['bcftools']
+	resources:
+		mem_mb      = 4000,
+		runtime_min = 60
+	benchmark:
+		'results/{run}/benchmarks/germline/vcf/restore_genotypes.bm'
+	log:
+		'results/{run}/logs/germline/restore_genotypes.log'
+	shell: """
+		set -euo pipefail
+		{params.bcftools} index -ft {input.annotated} 2>{log}
+		{params.bcftools} index -ft {input.cohort} 2>>{log}
+		{params.bcftools} annotate \
+			-a {input.annotated} \
+			-c INFO \
+			{input.cohort} \
+			-Oz -o {output.vcf} 2>>{log}
+		{params.bcftools} index -t {output.vcf} 2>>{log}
+	"""
+
+
+use rule r8_2_vep_germline_joint as r8_4_vep_germline_individual with:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
@@ -78,7 +133,8 @@ use rule r8_1_vep_germline_joint as r8_2_vep_germline_individual with:
 	log:
 		'results/{run}/logs/germline/{sample}.annotation.log'
 
-use rule r8_1_vep_germline_joint as r8_3_vep_somatic_paired with:
+
+use rule r8_2_vep_germline_joint as r8_5_vep_somatic_paired with:
 	wildcard_constraints:
 		patient = "|".join(ngs.GRM_VS_TMR_PATIENTS)
 	input:
@@ -94,7 +150,8 @@ use rule r8_1_vep_germline_joint as r8_3_vep_somatic_paired with:
 	log:
 		'results/{run}/logs/somatic/{patient}/annotation.log'
 
-use rule r8_1_vep_germline_joint as r8_4_vep_somatic_tmr_only with:
+
+use rule r8_2_vep_germline_joint as r8_6_vep_somatic_tmr_only with:
 	wildcard_constraints:
 		patient = "|".join(ngs.ONLY_TMR_PATIENTS)
 	input:
