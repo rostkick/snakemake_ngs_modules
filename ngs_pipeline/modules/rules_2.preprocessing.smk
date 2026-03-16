@@ -138,10 +138,14 @@ rule r2_6_sorting_bam:
 	shell: "{params.samtools} sort -@ {threads} -m 2G -o {output.bam} {input.bam} 2>{log}"
 
 rule r2_7_mark_duplicates:
+	"""Produce dedup BAM — fork point for DeepVariant (no BQSR) and Mutect2 (with BQSR).
+	DeepVariant is trained on raw base quality scores and performs better without BQSR.
+	Mutect2 relies on recalibrated scores and requires BQSR.
+	"""
 	input: 
 		bam = rules.r2_6_sorting_bam.output.bam
 	output: 
-		bam = temp("results/{run}/bam/{sample}.for_bqsr.bam")
+		bam = temp("results/{run}/bam/{sample}.dedup.bam")
 	params:
 		gatk = config['tools']['gatk'],
 		samtools = config['tools']['samtools'],
@@ -172,7 +176,7 @@ rule r2_8_prepare_bqsr:
 	input: 
 		bam = rules.r2_7_mark_duplicates.output.bam
 	output: 
-		bqsr = temp("results/{run}/bam/{sample}.for_bqsr.recal.table")
+		bqsr = temp("results/{run}/bam/{sample}.recal.table")
 	params:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
@@ -197,11 +201,12 @@ rule r2_8_prepare_bqsr:
 				-O {output} &>{log}"""
 
 rule r2_9_apply_bqsr:
+	"""Produce BQSR-recalibrated BAM for Mutect2 somatic calling."""
 	input: 
 		bam = rules.r2_7_mark_duplicates.output.bam,
 		bqsr = rules.r2_8_prepare_bqsr.output.bqsr
 	output: 
-		bam = temp("results/{run}/bam/{sample}.final.bam"),
+		bam = temp("results/{run}/bam/{sample}.final.bqsr.bam"),
 	params:
 		gatk = config['tools']['gatk'],
 		ref = config['references']['genome_fa'],
@@ -222,9 +227,22 @@ rule r2_9_apply_bqsr:
 				-bqsr {input.bqsr} \
 				-O {output.bam} &>{log}"""
 
-rule r2_10_index_bam:
+rule r2_10_index_dedup_bam:
+	"""Index dedup BAM for DeepVariant (no BQSR path)."""
+	input: rules.r2_7_mark_duplicates.output.bam
+	output: temp("results/{run}/bam/{sample}.dedup.bam.bai")
+	params:
+		samtools = config['tools']['samtools']
+	resources:
+		mem_mb=1000,
+		runtime_min=60
+	priority: 30
+	shell: "{params.samtools} index {input}"
+
+rule r2_11_index_bqsr_bam:
+	"""Index BQSR BAM for Mutect2, hs_metrics, and archiving."""
 	input: rules.r2_9_apply_bqsr.output.bam
-	output: "results/{run}/bam/{sample}.final.bam.bai"
+	output: "results/{run}/bam/{sample}.final.bqsr.bam.bai"
 	params:
 		samtools = config['tools']['samtools']
 	resources:

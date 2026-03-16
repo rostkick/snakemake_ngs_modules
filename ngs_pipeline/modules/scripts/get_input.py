@@ -17,9 +17,13 @@ def get_final_inputs(ngs):
 
     if ngs.GRM:
 
-        # Archive BAM files (r0_1)
+        # Archive dedup BAM (DeepVariant input, no BQSR) and BQSR BAM (Mutect2 input)
         germline_inputs += [
-            f"archive/{run}/bam/{sample}.final.bam"
+            f"archive/{run}/bam/{sample}.dedup.bam"
+            for sample in ngs.SAMPLES
+        ]
+        germline_inputs += [
+            f"archive/{run}/bam/{sample}.final.bqsr.bam"
             for sample in ngs.SAMPLES
         ]
 

@@ -1,10 +1,11 @@
-rule r0_1_archive_bams:
+rule r0_1_archive_dedup_bams:
+	"""Archive dedup BAM used as DeepVariant input (no BQSR)."""
 	input:
-		bam = "results/{run}/bam/{sample}.final.bam",
-		bai = "results/{run}/bam/{sample}.final.bam.bai"
+		bam = "results/{run}/bam/{sample}.dedup.bam",
+		bai = "results/{run}/bam/{sample}.dedup.bam.bai"
 	output:
-		bam = "archive/{run}/bam/{sample}.final.bam",
-		bai = "archive/{run}/bam/{sample}.final.bam.bai"
+		bam = "archive/{run}/bam/{sample}.dedup.bam",
+		bai = "archive/{run}/bam/{sample}.dedup.bam.bai"
 	priority: 50
 	threads: 1
 	resources:
@@ -12,9 +13,35 @@ rule r0_1_archive_bams:
 		runtime_min = 240,
 		nfs_io      = 1
 	benchmark:
-		'results/{run}/benchmarks/archive/{sample}.archive_bam.bm'
+		'results/{run}/benchmarks/archive/{sample}.archive_dedup_bam.bm'
 	log:
-		"results/{run}/logs/archive/{sample}.archive_bam.log"
+		"results/{run}/logs/archive/{sample}.archive_dedup_bam.log"
+	shell: """
+		set -euo pipefail
+		mkdir -p $(dirname {output.bam})
+		rsync -av {input.bam} {output.bam} &>>{log}
+		rsync -av {input.bai} {output.bai} &>>{log}
+	"""
+
+
+rule r0_1b_archive_bqsr_bams:
+	"""Archive BQSR BAM used as Mutect2 input."""
+	input:
+		bam = "results/{run}/bam/{sample}.final.bqsr.bam",
+		bai = "results/{run}/bam/{sample}.final.bqsr.bam.bai"
+	output:
+		bam = "archive/{run}/bam/{sample}.final.bqsr.bam",
+		bai = "archive/{run}/bam/{sample}.final.bqsr.bam.bai"
+	priority: 50
+	threads: 1
+	resources:
+		mem_mb      = 1000,
+		runtime_min = 240,
+		nfs_io      = 1
+	benchmark:
+		'results/{run}/benchmarks/archive/{sample}.archive_bqsr_bam.bm'
+	log:
+		"results/{run}/logs/archive/{sample}.archive_bqsr_bam.log"
 	shell: """
 		set -euo pipefail
 		mkdir -p $(dirname {output.bam})

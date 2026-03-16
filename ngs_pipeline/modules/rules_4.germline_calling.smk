@@ -2,8 +2,13 @@ _glnexus_config = 'DeepVariantWGS' if config['ngs_type'] == 'WGS' else 'DeepVari
 
 
 rule r4_1_deepvariant:
+	"""DeepVariant germline variant calling on dedup BAM without BQSR.
+	DeepVariant is trained on raw base quality scores — BQSR degrades accuracy
+	by distorting the quality score patterns the model was trained on.
+	"""
 	input:
-		bam = rules.r2_9_apply_bqsr.output.bam,
+		bam = rules.r2_7_mark_duplicates.output.bam,
+		bai = rules.r2_10_index_dedup_bam.output,
 		bed = rules.r2_2_prepare_bed_to_bed.output.bed
 	output:
 		vcf      = temp("results/{run}/germline/vcf/{sample}.vcf.gz"),
