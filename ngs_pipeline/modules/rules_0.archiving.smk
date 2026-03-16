@@ -221,9 +221,9 @@ rule r0_10_archive_xlsx_wes_panel:
 	wildcard_constraints:
 		panel_name = "|".join([p['name'] for p in config['references'].get('wes_gene_panels', [])]) or "NOPANEL"
 	input:
-		xlsx = "results/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+		xlsx = "results/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
 	output:
-		xlsx = "archive/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+		xlsx = "archive/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
 	priority: 50
 	threads: 1
 	resources:

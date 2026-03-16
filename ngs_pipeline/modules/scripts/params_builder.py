@@ -61,6 +61,11 @@ class DataProcessor(metaclass=ABCMeta):
 	def trim_sample_name(self, df: pd.DataFrame) -> pd.DataFrame:
 		df['full_name'] = df['patient']
 		"""Trim the sample names to a common prefix for all samples."""
+		trim_length = config.get('trim_sample_name_length', None)
+		if trim_length is not None:
+			df["patient"] = df["patient"].str.replace("[\-\.\|]", "_", regex=True)
+			df["patient"] = df["patient"].str[:trim_length]
+			return df
 		if len(df["patient"].unique()) > 1:
 			prefix_lengths = []
 			for prefix_length in range(1, len(df["patient"].iloc[0]) + 1):

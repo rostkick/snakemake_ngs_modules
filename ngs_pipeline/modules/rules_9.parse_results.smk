@@ -12,10 +12,11 @@ rule r9_1_split_joint_vcf:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
-		vcf = rules.r8_3_restore_genotypes.output.vcf
+		# vcf = rules.r8_3_restore_genotypes.output.vcf
+		vcf = "results/{run}/germline/vcf/cohort.annotated.vcf.gz"
 	output:
-		vcf     = temp("results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz"),
-		vcf_tbi = temp("results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz.tbi")
+		vcf     = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz",
+		vcf_tbi = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz.tbi"
 	params:
 		bcftools = config['tools']['bcftools']
 	resources:
@@ -129,7 +130,7 @@ rule r9_4_parse_vcf:
 	input:
 		vcf = _parse_vcf_input
 	output:
-		tsv = temp("results/{run}/germline/tsv/{sample}.{panel_name}.unfiltered.tsv")
+		tsv = "results/{run}/germline/tsv/{sample}.{panel_name}.unfiltered.tsv"
 	params:
 		bcftools = config['tools']['bcftools']
 	priority: 40
@@ -163,7 +164,7 @@ rule r9_5_parse_vcf_wes_clinical:
 			if config.get('calling_mode', 'joint') == 'joint' \
 			else rules.r8_4_vep_germline_individual.output.vcf
 	output:
-		tsv = temp("results/{run}/germline/tsv/{sample}.wes_clinical.unfiltered.tsv")
+		tsv = "results/{run}/germline/tsv/{sample}.wes_clinical.unfiltered.tsv"
 	params:
 		bcftools = config['tools']['bcftools']
 	priority: 40
@@ -206,7 +207,8 @@ rule r9_6_filter_tsv:
 		gnomad_af_threshold = config.get('filters', {}).get('gnomad', {}).get('af_threshold', 0.01),
 		gnomad_column       = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE'),
 		bed_file            = lambda wc: _wes_panels.get(wc.panel_name, config['panel_capture']['target']),
-		ngs_type            = config['ngs_type']
+		ngs_type            = config['ngs_type'],
+		consequence_filter  = True
 	log:
 		'results/{run}/logs/parse_results/{sample}.{panel_name}.filter_tsv.log'
 	script: "scripts/postprocess.py"
@@ -229,7 +231,8 @@ rule r9_7_filter_tsv_wes_clinical:
 		gnomad_af_threshold = 0.01,
 		gnomad_column       = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE'),
 		bed_file            = config['panel_capture']['target'],
-		ngs_type            = config['ngs_type']
+		ngs_type            = config['ngs_type'],
+		consequence_filter  = True
 	log:
 		'results/{run}/logs/parse_results/{sample}.wes_clinical.filter_tsv.log'
 	script: "scripts/postprocess.py"
@@ -245,7 +248,7 @@ rule r9_8_merge_tsv_to_xlsx_panel:
 			run=config['run'], sample=ngs.GRM_SAMPLES, allow_missing=True
 		)
 	output:
-		xlsx = "results/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+		xlsx = "results/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
 	params:
 		tsv = "results/{run}/run_table.tsv"
 	log:

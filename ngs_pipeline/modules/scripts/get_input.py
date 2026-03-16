@@ -39,7 +39,7 @@ def get_final_inputs(ngs):
         if ngs_type == 'WES':
             # Per-panel xlsx (r9_8)
             germline_inputs += [
-                f"results/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+                f"results/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
                 for panel_name in _panel_names
             ]
             # Per-sample full exome xlsx (r9_9)
@@ -64,7 +64,7 @@ def get_final_inputs(ngs):
             ]
             # Archive panel xlsx (r0_10)
             germline_inputs += [
-                f"archive/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+                f"archive/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
                 for panel_name in _panel_names
             ]
             # Archive wes_clinical xlsx (r0_11)
@@ -140,7 +140,7 @@ def get_germline_calling_targets(ngs):
             targets.append(f"results/{run}/germline/vcf/cohort.annotated.vcf.gz")
         if ngs_type == 'WES':
             targets += [
-                f"results/{run}/germline/xlsx/panel.{panel_name}.germline.results.xlsx"
+                f"results/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
                 for panel_name in _panel_names
             ]
             targets += [
