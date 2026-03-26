@@ -250,7 +250,10 @@ rule r9_8_merge_tsv_to_xlsx_panel:
 	output:
 		xlsx = "results/{run}/germline/xlsx/panel.{panel_name}.{run}.germline.results.xlsx"
 	params:
-		tsv = "results/{run}/run_table.tsv"
+		tsv            = "results/{run}/run_table.tsv",
+		hs_metrics_dir = f"results/{config['run']}/bam/hs_metrics",
+		vcf_dir        = f"results/{config['run']}/germline/vcf",
+		bcftools       = config['tools']['bcftools']
 	log:
 		'results/{run}/logs/parse_results/{panel_name}.tsv2xlsx.log'
 	script:
@@ -267,7 +270,10 @@ rule r9_9_merge_tsv_to_xlsx_wes_clinical:
 	output:
 		xlsx = "results/{run}/germline/xlsx/wes_clinical.{run}.germline.results.xlsx"
 	params:
-		tsv = "results/{run}/run_table.tsv"
+		tsv            = "results/{run}/run_table.tsv",
+		hs_metrics_dir = f"results/{config['run']}/bam/hs_metrics",
+		vcf_dir        = f"results/{config['run']}/germline/vcf",
+		bcftools       = config['tools']['bcftools']
 	log:
 		'results/{run}/logs/parse_results/wes_clinical.tsv2xlsx.log'
 	script:
@@ -281,7 +287,10 @@ rule r9_10_merge_tsv_to_xlsx:
 	output:
 		xlsx = "results/{run}/germline/xlsx/individual.{run}.germline.results.xlsx"
 	params:
-		tsv = "results/{run}/run_table.tsv"
+		tsv            = "results/{run}/run_table.tsv",
+		hs_metrics_dir = f"results/{config['run']}/bam/hs_metrics",
+		vcf_dir        = f"results/{config['run']}/germline/vcf",
+		bcftools       = config['tools']['bcftools']
 	log:
 		'results/{run}/logs/parse_results/tsv2xlsx.log'
 	script:
@@ -295,7 +304,9 @@ rule r9_11_parse_vcf_raw:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
-		vcf = rules.r9_1_split_joint_vcf.output.vcf 			if config.get('calling_mode', 'joint') == 'joint' 			else rules.r8_4_vep_germline_individual.output.vcf
+		vcf = rules.r9_1_split_joint_vcf.output.vcf \
+			if config.get('calling_mode', 'joint') == 'joint' \
+			else rules.r8_4_vep_germline_individual.output.vcf
 	output:
 		tsv = temp("results/{run}/germline/tsv/{sample}.raw.tsv")
 	params:
@@ -309,5 +320,6 @@ rule r9_11_parse_vcf_raw:
 	shell: """
 		echo -e 'Chr\tRef\tAlt\tRefGene\tExon\tHGVS_description\tZyg\trsID\tGATK_FILTER\tConsequence\tConsequence_AA\tgnomAD_exome_NFE\tgnomAD_exome_Comb\tgnomAD_genome_NFE\tgnomAD_genome_Comb\tCADD_PHRED\tCADD_RAW\tClinVar_CLNSIG\tSIFT\tPolyPhen\tExAC_pLI\tPUBMED\tClinVar_publications\tClinVar_CLNDN\tBIOTYPE\tCANONICAL\tPHENOTYPES\tam_class\tam_pathogenicity\tSNPred_score\tCoverageDepth\tGenotypeQual\tAlleleDepth' > {output.tsv}
 
-		{params.bcftools} view -m2 -M2 {input.vcf} | 		{params.bcftools} +split-vep -s primary -d -f '%CHROM:%POS\t%REF\t%ALT\t%SYMBOL\t%EXON\t%SYMBOL;%HGVSg;%HGVSc;%HGVSp\t[%GT]\t%Existing_variation\t%FILTER\t%Consequence\t%Amino_acids\t%gnomADe_NFE_AF\t%gnomADe_AF\t%gnomADg_NFE_AF\t%gnomADg_AF\t%CADD_PHRED\t%CADD_RAW\t%CLIN_SIG\t%SIFT\t%PolyPhen\t%pLI_gene_value\t%PUBMED\t%ClinVar\t%ClinVar_CLNDN\t%BIOTYPE\t%CANONICAL\t%PHENOTYPES\t%am_class\t%am_pathogenicity\t%SNPred_SNPred_score\t[%DP]\t[%GQ]\t[%AD]\n' >> {output.tsv} 2>>{log}
+		{params.bcftools} view -m2 -M2 {input.vcf} | \
+		{params.bcftools} +split-vep -s primary -d -f '%CHROM:%POS\t%REF\t%ALT\t%SYMBOL\t%EXON\t%SYMBOL;%HGVSg;%HGVSc;%HGVSp\t[%GT]\t%Existing_variation\t%FILTER\t%Consequence\t%Amino_acids\t%gnomADe_NFE_AF\t%gnomADe_AF\t%gnomADg_NFE_AF\t%gnomADg_AF\t%CADD_PHRED\t%CADD_RAW\t%CLIN_SIG\t%SIFT\t%PolyPhen\t%pLI_gene_value\t%PUBMED\t%ClinVar\t%ClinVar_CLNDN\t%BIOTYPE\t%CANONICAL\t%PHENOTYPES\t%am_class\t%am_pathogenicity\t%SNPred_SNPred_score\t[%DP]\t[%GQ]\t[%AD]\n' >> {output.tsv} 2>>{log}
 	"""

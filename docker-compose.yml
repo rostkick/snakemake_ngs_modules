@@ -16,11 +16,20 @@ services:
     privileged: true
     volumes:
       - /mnt/IMBG-Data-RAW/:/mnt/IMBG-Data-RAW/:ro # Mount the 'IMBG-Data-RAW' directory with real data,
-      - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data:ro # ... links, capture and config,
+      - /home/students/snakemake_ngs_modules/data:/ngs_pipeline/app/data # ... links, capture and config,
       - /mnt/IMBG-NGS-Analysys/IMBG-Data-Analysys:/ngs_pipeline/app/archive # ... 'archive' directory,
       - /mnt/sdb/results:/ngs_pipeline/app/results # ... 'results' directory,
       - /mnt/sdb/ngs_refs:/ngs_pipeline/app/ngs_refs:ro # ... 'references'.
       - /mnt/sdb/results/.snakemake:/ngs_pipeline/app/.snakemake # ... snakemake state for --ri restart.
-    # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 30 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=2 staging_slots=3 --config calling_mode=joint force_dirty=True -R r4_2_glnexus_joint -n"
-    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 30 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=2 staging_slots=3 --config calling_mode=joint force_dirty=True"
+    # command: bash -c "source ~/.bashrc && cd app/ && snakemake -v"
+    command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 33 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=2 staging_slots=3 --config calling_mode=joint force_dirty=True -R r9_6_filter_tsv r9_7_filter_tsv_wes_clinical"
+    # command: bash -c "source ~/.bashrc && cd app/ && \
+    #                   snakemake -s snakefile.smk \
+    #                   -j 30 -c 88 --resources mem_mb=170000 nfs_io=2 staging_slots=3 \
+    #                   --ri --nolock --config calling_mode=joint force_dirty=True \
+    #                   -R r9_1_split_joint_vcf \
+    #                   --until r9_9_merge_tsv_to_xlsx_wes_clinical \
+    #                   --allowed-rules r0_10_archive_xlsx_wes_panel r0_11_archive_xlsx_wes_clinical r9_1_split_joint_vcf r9_2_filter_panel_genes r9_4_parse_vcf r9_5_parse_vcf_wes_clinical r9_6_filter_tsv r9_7_filter_tsv_wes_clinical r9_8_merge_tsv_to_xlsx_panel r9_9_merge_tsv_to_xlsx_wes_clinical \
+    #                   -p"
+    # command: bash -c "source ~/.bashrc && cd app/ && snakemake -s snakefile.smk -j 33 -c 88 --ri --nolock -p --resources mem_mb=170000 nfs_io=2 staging_slots=1 --config calling_mode=joint force_dirty=True"
     # command: "tail -f /dev/null"

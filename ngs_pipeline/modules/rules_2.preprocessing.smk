@@ -172,9 +172,22 @@ rule r2_7_mark_duplicates:
 		fi
 	"""
 
+rule r2_10_index_dedup_bam:
+	"""Index dedup BAM for DeepVariant (no BQSR path) and BQSR preparation."""
+	input: rules.r2_7_mark_duplicates.output.bam
+	output: temp("results/{run}/bam/{sample}.dedup.bam.bai")
+	params:
+		samtools = config['tools']['samtools']
+	resources:
+		mem_mb=1000,
+		runtime_min=60
+	priority: 30
+	shell: "{params.samtools} index {input}"
+
 rule r2_8_prepare_bqsr:
 	input: 
-		bam = rules.r2_7_mark_duplicates.output.bam
+		bam = rules.r2_7_mark_duplicates.output.bam,
+		bai = rules.r2_10_index_dedup_bam.output
 	output: 
 		bqsr = temp("results/{run}/bam/{sample}.recal.table")
 	params:
@@ -204,6 +217,7 @@ rule r2_9_apply_bqsr:
 	"""Produce BQSR-recalibrated BAM for Mutect2 somatic calling."""
 	input: 
 		bam = rules.r2_7_mark_duplicates.output.bam,
+		bai = rules.r2_10_index_dedup_bam.output,
 		bqsr = rules.r2_8_prepare_bqsr.output.bqsr
 	output: 
 		bam = temp("results/{run}/bam/{sample}.final.bqsr.bam"),
@@ -226,18 +240,6 @@ rule r2_9_apply_bqsr:
 				-L {params.panel_capture} \
 				-bqsr {input.bqsr} \
 				-O {output.bam} &>{log}"""
-
-rule r2_10_index_dedup_bam:
-	"""Index dedup BAM for DeepVariant (no BQSR path)."""
-	input: rules.r2_7_mark_duplicates.output.bam
-	output: temp("results/{run}/bam/{sample}.dedup.bam.bai")
-	params:
-		samtools = config['tools']['samtools']
-	resources:
-		mem_mb=1000,
-		runtime_min=60
-	priority: 30
-	shell: "{params.samtools} index {input}"
 
 rule r2_11_index_bqsr_bam:
 	"""Index BQSR BAM for Mutect2, hs_metrics, and archiving."""

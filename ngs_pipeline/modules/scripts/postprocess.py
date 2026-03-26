@@ -17,9 +17,8 @@ gnomad_af_threshold = snakemake.params.get('gnomad_af_threshold', 0.01)
 consequence_filter_enabled = snakemake.params.get('consequence_filter', False)
 
 EXTREME_DP_THRESHOLD = 5
-# GQ threshold removed: GLnexus DeepVariantWES caps GQ at 10 during joint calling.
-# Variants with GQ<=10 that passed joint calling are legitimate — they are mostly
-# common polymorphisms filtered downstream by gnomAD, not true low-quality calls.
+GQ_HARD_THRESHOLD = 10
+GQ_SOFT_THRESHOLD = 20
 
 CONSEQUENCE_ORDER = {
     'sequence_variant': 0,
@@ -146,13 +145,11 @@ def remove_extreme_low_quality_variants(df):
         print(f"[FILTER]   DP <= {EXTREME_DP_THRESHOLD}: {m.sum()} rows")
         extreme_mask |= m
 
-    # Hard-remove variants with GQ < 5: even accounting for GLnexus GQ cap at 10,
-    # GQ 0-4 indicates DeepVariant itself has no confidence in the genotype call.
-    # GQ 5-10 are retained — these are legitimate calls capped by GLnexus DeepVariantWES.
+    # Hard-remove variants with GQ < 10
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
-        m = df['GenotypeQual'] < 5
-        print(f"[FILTER]   GQ < 5: {m.sum()} rows")
+        m = df['GenotypeQual'] < 10
+        print(f"[FILTER]   GQ < 10: {m.sum()} rows")
         extreme_mask |= m
 
     # Hard-remove variants where ref AD is missing (.) — unreliable multiallelic
@@ -200,13 +197,12 @@ def apply_quality_flags(df):
         df.loc[m, 'GATK_FILTER'] = 'DP'
         print(f"[FILTER]   Flagged DP (5-10): {m.sum()} rows")
 
-    # GQ soft flag: GQ 5-9 are retained but flagged — GLnexus caps GQ at 10,
-    # so these are borderline calls worth manual review.
+    # GQ soft flag: GQ 10-19 are retained but flagged for manual review
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
-        m = (df['GenotypeQual'] >= 5) & (df['GenotypeQual'] < 10) & (df['GATK_FILTER'] == 'PASS')
+        m = (df['GenotypeQual'] >= 10) & (df['GenotypeQual'] < 20) & (df['GATK_FILTER'] == 'PASS')
         df.loc[m, 'GATK_FILTER'] = 'GQ'
-        print(f"[FILTER]   Flagged GQ (5-9): {m.sum()} rows")
+        print(f"[FILTER]   Flagged GQ (10-19): {m.sum()} rows")
 
     if 'AlleleDepth' in df.columns:
         df[['AD1', 'AD2']] = df['AlleleDepth'].astype(str).str.split(',', expand=True).iloc[:, :2]
@@ -290,8 +286,7 @@ def apply_consequence_filter(df):
         'splice_donor_5th_base_variant',
         'splice_donor_region_variant',
         'splice_polypyrimidine_tract_variant',
-        # synonymous — keep for completeness of coding region
-        'synonymous_variant',
+        # synonymous — removed: not informative for pathogenicity analysis
         'stop_retained_variant',
         'coding_sequence_variant',
         'incomplete_terminal_codon_variant',
@@ -361,6 +356,20 @@ def filter_by_panel_genes(df, bed_file, ngs_type):
     return df
 
 
+def filter_large_indels(df, max_indel_len=9):
+    """Remove indels with length >= 10 bp (abs(len(REF) - len(ALT)) >= 10)."""
+    if 'Ref' not in df.columns or 'Alt' not in df.columns:
+        print("[FILTER] filter_large_indels: Ref/Alt columns not found, skipping")
+        return df
+    n = len(df)
+    indel_len = (df['Ref'].astype(str).str.len() - df['Alt'].astype(str).str.len()).abs()
+    mask = indel_len >= 10
+    print(f"[FILTER]   Indel length >= 10: {mask.sum()} rows")
+    df = df[~mask]
+    log_step("filter_large_indels", n, len(df))
+    return df
+
+
 def main():
     df = pd.read_csv(input_file, sep='\t', encoding='utf-8', low_memory=False)
     print(f"[FILTER] ===== postprocess start =====")
@@ -386,24 +395,27 @@ def main():
     # 2. Hard-remove extreme low quality
     df = remove_extreme_low_quality_variants(df)
 
-    # 3. Optional: keep only pathogenic consequence classes
+    # 3. Remove large indels (>= 10 bp)
+    df = filter_large_indels(df)
+
+    # 4. Optional: keep only pathogenic consequence classes
     if consequence_filter_enabled:
         df = apply_consequence_filter(df)
 
-    # 4. Parse gnomAD columns
+    # 5. Parse gnomAD columns
     gnomad_cols = [c for c in df.columns if 'gnomAD' in c]
     if gnomad_cols:
         df[gnomad_cols] = df[gnomad_cols].replace('.', 0)
         df[gnomad_cols] = df[gnomad_cols].astype(float)
 
-    # 5. Merge gene annotation (mart)
+    # 6. Merge gene annotation (mart)
     n_pre = len(df)
     if 'RefGene' in df.columns and 'HGNC symbol' in df_mart.columns:
         df = pd.merge(df, df_mart, left_on='RefGene', right_on='HGNC symbol', how='left')
     if len(df) != n_pre:
         print(f"[FILTER] WARNING: mart merge changed row count {n_pre} -> {len(df)}")
 
-    # 6. Merge gene rank
+    # 7. Merge gene rank
     if df_rank is not None:
         if 'hgnc_symbol' in df_rank.columns:
             n_rank_before = len(df_rank)
@@ -425,20 +437,20 @@ def main():
     else:
         df['rank_gse71613'] = np.nan
 
-    # 7. Soft quality flags (tag only, do NOT remove)
+    # 8. Soft quality flags (tag only, do NOT remove)
     df = apply_quality_flags(df)
 
-    # 8. gnomAD frequency filter (wes_clinical only, enabled in snakemake rule)
+    # 9. gnomAD frequency filter (wes_clinical only, enabled in snakemake rule)
     if gnomad_filter_enabled:
         df = apply_gnomad_filter(df, gnomad_af_threshold)
 
-    # 9. Panel gene filter (panel ngs_type only)
+    # 10. Panel gene filter (panel ngs_type only)
     df = filter_by_panel_genes(df, bed_file, ngs_type)
 
-    # 10. Dedup multi-transcript rows: keep most severe per CHROM:POS
+    # 11. Dedup multi-transcript rows: keep most severe per CHROM:POS
     df = dedup_per_position(df)
 
-    # 11. Sort by consequence severity (most severe first), then by chromosome/position
+    # 12. Sort by consequence severity (most severe first), then by chromosome/position
     def chrom_sort_key(chrom_pos):
         chrom = str(chrom_pos).split(':')[0].replace('chr', '').replace('Chr', '')
         order = {'X': 23, 'Y': 24, 'M': 25, 'MT': 25}
