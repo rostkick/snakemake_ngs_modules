@@ -15,6 +15,6 @@ tools:
   deepvariant: "/ngs_pipeline/tools/deepvariant_1.9.0.sif"
   glnexus: "/ngs_pipeline/tools/glnexus_v1.4.1.sif"
   vep:
-    path: "/ngs_pipeline/tools/ensembl-vep_latest.sif"
+    path: "/ngs_pipeline/tools/ensembl-vep_114.sif"
     cache: "/ngs_pipeline/app/ngs_refs/vep_cache"
     plugins: "/ngs_pipeline/app/ngs_refs/VEP_plugins"

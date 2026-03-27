@@ -39,7 +39,11 @@ rule r8_2_vep_germline_joint:
 		exacpli        = config['references']['vep_plugins_data']['ExACpLI'],
 		clinvar        = config['references']['vep_plugins_data']['custom']['ClinVar'],
 		snpred         = config['references']['vep_plugins_data']['custom']['SNPred'],
-		phenotypes     = config['references']['vep_plugins_data']['Phenotypes']
+		phenotypes     = config['references']['vep_plugins_data']['Phenotypes'],
+		revel          = config['references']['vep_plugins_data'].get('REVEL', ''),
+		mpc            = config['references']['vep_plugins_data'].get('MPC', ''),
+		spliceai_snv   = config['references']['vep_plugins_data'].get('SpliceAI_SNV', ''),
+		spliceai_indel = config['references']['vep_plugins_data'].get('SpliceAI_INDEL', '')
 	benchmark:
 		'results/{run}/benchmarks/germline/vcf/anno_joint.bm'
 	log:
@@ -70,11 +74,16 @@ rule r8_2_vep_germline_joint:
 				--polyphen b \
 				--humdiv \
 				--pubmed \
+				--domains \
 				--plugin CADD,{params.cadd_data} \
 				--plugin AlphaMissense,file={params.alpha_missense} \
 				--plugin pLI,{params.exacpli} \
 				--plugin Phenotypes,file={params.phenotypes} \
-				--custom {params.clinvar},ClinVar,vcf,exact,0,CLINSIG,CLNDN \
+				--plugin NMD \
+				$([ -n "{params.revel}" ] && echo "--plugin REVEL,file={params.revel}") \
+				$([ -n "{params.mpc}" ] && echo "--plugin MPC,{params.mpc}") \
+				$([ -n "{params.spliceai_snv}" ] && [ -n "{params.spliceai_indel}" ] && echo "--plugin SpliceAI,snv={params.spliceai_snv},indel={params.spliceai_indel}") \
+				--custom {params.clinvar},ClinVar,vcf,exact,0,CLINSIG,CLNDN,CLNREVSTAT \
 				--custom {params.snpred},SNPred,vcf,exact,0,SNPred_score \
 				--compress_output bgzip \
 				--use_given_ref \

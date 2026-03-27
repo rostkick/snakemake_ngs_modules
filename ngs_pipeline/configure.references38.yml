@@ -29,7 +29,11 @@ references:
       CADD: "/ngs_pipeline/app/ngs_refs/VEP_plugins/whole_genome_SNVs.hg38.tsv.gz"
       AlphaMissense: "/ngs_pipeline/app/ngs_refs/VEP_plugins/AlphaMissense_hg38.tsv.gz"
       ExACpLI: "/ngs_pipeline/app/ngs_refs/VEP_plugins/plI_gene.txt"
-      Phenotypes: "/ngs_pipeline/app/ngs_refs/VEP_plugins/Phenotypes.pm_homo_sapiens_108_GRCh38.normilized.gvf.gz"
+      Phenotypes: "/ngs_pipeline/app/ngs_refs/VEP_plugins/Phenotypes.pm_homo_sapiens_114_GRCh38.gvf.gz"
+      REVEL: "/ngs_pipeline/app/ngs_refs/VEP_plugins/revel_scores.hg38.tsv.gz"
+      MPC: "/ngs_pipeline/app/ngs_refs/VEP_plugins/fordist_constraint_official_mpc_values_v2.hg38.fixed.txt.gz"
+      SpliceAI_SNV: "/ngs_pipeline/app/ngs_refs/VEP_plugins/spliceai/spliceai_scores.masked.snv.ensembl_mane_v1.4.grch38.vcf.gz"
+      SpliceAI_INDEL: "/ngs_pipeline/app/ngs_refs/VEP_plugins/spliceai/spliceai_scores.masked.snv.ensembl_mane_v1.4.grch38.vcf.gz"
       custom:
           ClinVar: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/clinvar.vcf.gz"
           mart: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/mart_export.tsv"
