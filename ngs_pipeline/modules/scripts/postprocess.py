@@ -389,6 +389,23 @@ def parse_numeric_cols(df):
     return df
 
 
+def compute_spliceai_max(df):
+    """Compute max SpliceAI delta score across all 4 positions.
+    Replaces 4 individual DS columns with SpliceAI_max and SpliceAI_flag.
+    """
+    cols = ['SpliceAI_DS_AG', 'SpliceAI_DS_AL', 'SpliceAI_DS_DG', 'SpliceAI_DS_DL']
+    available = [c for c in cols if c in df.columns]
+    if not available:
+        return df
+    df['SpliceAI_max'] = df[available].max(axis=1)
+    df['SpliceAI_flag'] = df['SpliceAI_max'].apply(
+        lambda x: 'PASS' if pd.notna(x) and x >= 0.2 else ('FAIL' if pd.notna(x) else '.')
+    )
+    df.drop(columns=available, inplace=True)
+    print(f"[FILTER] SpliceAI_max and SpliceAI_flag computed, dropped individual DS columns")
+    return df
+
+
 def main():
     df = pd.read_csv(input_file, sep='\t', encoding='utf-8', low_memory=False)
     print(f"[FILTER] ===== postprocess start =====")
@@ -429,6 +446,9 @@ def main():
 
     # 6. Parse numeric annotation columns (REVEL, MPC, SpliceAI, etc.)
     df = parse_numeric_cols(df)
+
+    # 6b. Compute SpliceAI max score and drop individual DS columns
+    df = compute_spliceai_max(df)
 
     # 7. Merge gene annotation (mart)
     n_pre = len(df)
