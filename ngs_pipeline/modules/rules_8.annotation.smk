@@ -5,7 +5,7 @@ rule r8_1_strip_genotypes:
 	input:
 		vcf = rules.r4_3_bcf_to_vcf.output.vcf
 	output:
-		vcf = temp("results/{run}/germline/vcf/cohort.sites.vcf.gz")
+		vcf = "results/{run}/germline/vcf/cohort.sites.vcf.gz"
 	params:
 		bcftools = config['tools']['bcftools']
 	resources:
@@ -48,9 +48,9 @@ rule r8_2_vep_germline_joint:
 		'results/{run}/benchmarks/germline/vcf/anno_joint.bm'
 	log:
 		'results/{run}/logs/germline/annotation.log'
-	threads: 4
+	threads: 16
 	resources:
-		mem_mb      = 20000,
+		mem_mb      = 40000,
 		runtime_min = 2880
 	shell: """{params.singularity} run -B /ngs_pipeline:/ngs_pipeline {params.vep} \
 				/opt/vep/src/ensembl-vep/vep \
@@ -74,15 +74,14 @@ rule r8_2_vep_germline_joint:
 				--polyphen b \
 				--humdiv \
 				--pubmed \
-				--domains \
 				--plugin CADD,{params.cadd_data} \
 				--plugin AlphaMissense,file={params.alpha_missense} \
 				--plugin pLI,{params.exacpli} \
 				--plugin Phenotypes,file={params.phenotypes} \
 				--plugin NMD \
-				$([ -n "{params.revel}" ] && echo "--plugin REVEL,file={params.revel}") \
+				$([ -n "{params.revel}" ] && echo "--plugin REVEL,file={params.revel},no_match=1") \
 				$([ -n "{params.mpc}" ] && echo "--plugin MPC,{params.mpc}") \
-				$([ -n "{params.spliceai_snv}" ] && [ -n "{params.spliceai_indel}" ] && echo "--plugin SpliceAI,snv={params.spliceai_snv},indel={params.spliceai_indel}") \
+				$([ -n "{params.spliceai_snv}" ] && [ -n "{params.spliceai_indel}" ] && echo "--plugin SpliceAI,snv={params.spliceai_snv},indel={params.spliceai_indel},cutoff=0.2") \
 				--custom {params.clinvar},ClinVar,vcf,exact,0,CLINSIG,CLNDN,CLNREVSTAT \
 				--custom {params.snpred},SNPred,vcf,exact,0,SNPred_score \
 				--compress_output bgzip \

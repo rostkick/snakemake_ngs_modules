@@ -89,8 +89,8 @@ rule r4_3_bcf_to_vcf:
 	input:
 		bcf = rules.r4_2_glnexus_joint.output.bcf
 	output:
-		vcf = temp("results/{run}/germline/vcf/cohort.vcf.gz"),
-		tbi = temp("results/{run}/germline/vcf/cohort.vcf.gz.tbi")
+		vcf = "results/{run}/germline/vcf/cohort.vcf.gz",
+		tbi = "results/{run}/germline/vcf/cohort.vcf.gz.tbi"
 	params:
 		bcftools = config['tools']['bcftools'],
 		ref      = config['references']['genome_fa']
