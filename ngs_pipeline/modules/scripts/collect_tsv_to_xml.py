@@ -52,8 +52,15 @@ def get_hs_metrics(sample, hs_metrics_dir):
 
 
 def get_vcf_stats(sample, vcf_dir, bcftools):
-    vcf = os.path.join(vcf_dir, f"{sample}.joint.annotated.vcf.gz")
-    if not os.path.exists(vcf):
+    # Support both joint and individual calling mode VCF naming conventions
+    candidates = [
+        os.path.join(vcf_dir, f"{sample}.joint.annotated.vcf.gz"),
+        os.path.join(vcf_dir, f"{sample}.annotated.vcf.gz"),
+        os.path.join(vcf_dir, f"{sample}.vcf.gz"),
+    ]
+    vcf = next((p for p in candidates if os.path.exists(p)), None)
+    if vcf is None:
+        print(f"[QC] vcf not found for {sample}, tried: {candidates}")
         return {}
     try:
         # SNP, indel, Ti/Tv
@@ -147,7 +154,7 @@ def build_qc_df(sheet_data, hs_metrics_dir, vcf_dir, bcftools):
         rows.append(row)
     cols = ['Sample', 'Full_Name',
             'Mean_Coverage', 'PCT_10X', 'PCT_20X', 'PCT_30X',
-            'Fold_Enrichment', 'Zero_Cvg_PCT', 'PCT_Off_Bait',
+            'Fold_Enrichment', 'Zero_Cvg_PCT',
             'SNP', 'Indels', 'Ins/Del', 'Ti/Tv',
             'Het', 'Hom', 'Het/Hom',
             'Mean_GQ_het', 'Mean_DP_het',

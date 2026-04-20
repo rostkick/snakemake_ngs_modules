@@ -4,10 +4,10 @@ from collections import defaultdict
 def get_somatic_input(wc, data):
 	inp = defaultdict(str)
 	sample_tmr = wc.patient + '_tmr'
-	inp['tumor'] = f'results/{wc.run}/bam/{sample_tmr}.final.bam'
+	inp['tumor'] = f'results/{wc.run}/bam/{sample_tmr}.final.bqsr.bam'
 	if ngs.GRM:
 		sample_germline = wc.patient + '_grm'
-		inp['germline'] = f'results/{wc.run}/bam/{sample_germline}.final.bam'
+		inp['germline'] = f'results/{wc.run}/bam/{sample_germline}.final.bqsr.bam'
 	return inp
 
 rule r5_1_collect_fir2_counts:

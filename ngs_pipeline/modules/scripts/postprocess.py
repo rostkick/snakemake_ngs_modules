@@ -17,8 +17,8 @@ gnomad_af_threshold = snakemake.params.get('gnomad_af_threshold', 0.01)
 consequence_filter_enabled = snakemake.params.get('consequence_filter', False)
 
 EXTREME_DP_THRESHOLD = 5
-GQ_HARD_THRESHOLD = 10   # Hard-remove: DeepVariant has no confidence below this
-GQ_SOFT_THRESHOLD = 20   # Soft-flag: borderline calls worth manual review
+GQ_HARD_THRESHOLD = 20   # Hard-remove: HaplotypeCaller calls with GQ < 20 are low confidence
+GQ_SOFT_THRESHOLD = 30   # Soft-flag: borderline calls worth manual review
 
 CONSEQUENCE_ORDER = {
     'sequence_variant': 0,
@@ -139,6 +139,21 @@ def remove_extreme_low_quality_variants(df):
     n = len(df)
     extreme_mask = pd.Series([False] * len(df), index=df.index)
 
+    # Hard-remove variants that failed GATK VariantFiltration hard filters
+    # (QD2, FS60, MQ40, MQRankSum-12.5, ReadPosRankSum-8, FS200, ReadPosRankSum-20 etc.)
+    # Allowed values: PASS, . (bcftools PASS), GQ, DP, AlleleBalance, VQSRTranche*
+    # Everything else is a GATK hard filter tag — remove.
+    _allowed_filters = {'PASS', '.', 'nan', '', 'GQ', 'DP', 'AlleleBalance'}
+    if 'GATK_FILTER' in df.columns:
+        def _is_hard_filtered(val):
+            val = str(val).strip()
+            if val in _allowed_filters:
+                return False
+            return True
+        hard_filtered = df['GATK_FILTER'].apply(_is_hard_filtered)
+        print(f"[FILTER]   GATK hard filter failed: {hard_filtered.sum()} rows")
+        extreme_mask |= hard_filtered
+
     if 'CoverageDepth' in df.columns:
         df['CoverageDepth'] = pd.to_numeric(df['CoverageDepth'], errors='coerce')
         m = df['CoverageDepth'] <= EXTREME_DP_THRESHOLD
@@ -146,8 +161,7 @@ def remove_extreme_low_quality_variants(df):
         extreme_mask |= m
 
     # Hard-remove variants with GQ < GQ_HARD_THRESHOLD.
-    # GLnexus DeepVariantWES caps GQ at 10 during joint calling — variants
-    # with GQ < 10 indicate DeepVariant itself has no confidence in the call.
+    # HaplotypeCaller GQ ranges 0–99; calls below 20 are unreliable regardless of depth.
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
         m = df['GenotypeQual'] < GQ_HARD_THRESHOLD
@@ -155,7 +169,7 @@ def remove_extreme_low_quality_variants(df):
         extreme_mask |= m
 
     # Hard-remove variants where ref AD is missing (.) — unreliable multiallelic
-    # calls where GLnexus could not compute ref allele depth.
+    # calls where the genotyper could not compute ref allele depth.
     if 'AlleleDepth' in df.columns:
         try:
             split_ad = df['AlleleDepth'].astype(str).str.split(',', expand=True)
@@ -200,7 +214,7 @@ def apply_quality_flags(df):
         print(f"[FILTER]   Flagged DP (5-10): {m.sum()} rows")
 
     # GQ soft flag: GQ_HARD_THRESHOLD to GQ_SOFT_THRESHOLD-1 are retained but flagged.
-    # GLnexus caps GQ at 10, so GQ 10-19 are borderline calls worth manual review.
+    # HaplotypeCaller GQ 20-29 are borderline calls worth manual review.
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
         m = (df['GenotypeQual'] >= GQ_HARD_THRESHOLD) & (df['GenotypeQual'] < GQ_SOFT_THRESHOLD) & (df['GATK_FILTER'] == 'PASS')

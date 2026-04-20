@@ -1,5 +1,5 @@
 rule r0_1_archive_dedup_bams:
-	"""Archive dedup BAM used as DeepVariant input (no BQSR)."""
+	"""Archive dedup BAM (pre-BQSR). Retained for QC and reproducibility."""
 	input:
 		bam = "results/{run}/bam/{sample}.dedup.bam",
 		bai = "results/{run}/bam/{sample}.dedup.bam.bai"
@@ -25,7 +25,7 @@ rule r0_1_archive_dedup_bams:
 
 
 rule r0_1b_archive_bqsr_bams:
-	"""Archive BQSR BAM used as Mutect2 input."""
+	"""Archive BQSR BAM used as HaplotypeCaller and Mutect2 input."""
 	input:
 		bam = "results/{run}/bam/{sample}.final.bqsr.bam",
 		bai = "results/{run}/bam/{sample}.final.bqsr.bam.bai"
@@ -51,6 +51,9 @@ rule r0_1b_archive_bqsr_bams:
 
 
 rule r0_2_archive_vcfs:
+	"""Archive per-sample hard-filtered VCF from HaplotypeCaller.
+	Used in individual calling mode only. gVCF is temp() and not archived here.
+	"""
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
@@ -294,13 +297,13 @@ rule r0_11_archive_xlsx_wes_clinical:
 rule r0_12_archive_gvcfs_joint:
 	"""Archive per-sample gVCF files for joint calling mode.
 	Essential for future joint calling with additional samples
-	without re-running DeepVariant.
+	without re-running HaplotypeCaller.
 	"""
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
-		gvcf     = rules.r4_1_deepvariant.output.gvcf,
-		gvcf_tbi = rules.r4_1_deepvariant.output.gvcf_tbi
+		gvcf     = rules.r4_1_haplotypecaller.output.gvcf,
+		gvcf_tbi = rules.r4_1_haplotypecaller.output.gvcf_tbi
 	output:
 		gvcf     = "archive/{run}/germline/gvcf/{sample}.gvcf.gz",
 		gvcf_tbi = "archive/{run}/germline/gvcf/{sample}.gvcf.gz.tbi"
@@ -322,27 +325,29 @@ rule r0_12_archive_gvcfs_joint:
 	"""
 
 
-rule r0_13_archive_cohort_vcf:
-	"""Archive annotated cohort VCF to network storage."""
-	input:
-		vcf = rules.r8_3_restore_genotypes.output.vcf,
-		tbi = rules.r8_3_restore_genotypes.output.tbi
-	output:
-		vcf = "archive/{run}/germline/vcf/cohort.annotated.vcf.gz",
-		tbi = "archive/{run}/germline/vcf/cohort.annotated.vcf.gz.tbi"
-	priority: 50
-	threads: 1
-	resources:
-		mem_mb      = 1000,
-		runtime_min = 120,
-		nfs_io      = 1
-	benchmark:
-		'results/{run}/benchmarks/archive/cohort.annotated.archive_vcf.bm'
-	log:
-		"results/{run}/logs/archive/cohort.annotated.archive_vcf.log"
-	shell: """
-		set -euo pipefail
-		mkdir -p $(dirname {output.vcf})
-		rsync -av {input.vcf} {output.vcf} &>>{log}
-		rsync -av {input.tbi} {output.tbi} &>>{log}
-	"""
+if config.get('calling_mode', 'joint') == 'joint':
+
+	rule r0_13_archive_cohort_vcf:
+		"""Archive annotated cohort VCF to network storage."""
+		input:
+			vcf = "results/{run}/germline/vcf/cohort.annotated.vcf.gz",
+			tbi = "results/{run}/germline/vcf/cohort.annotated.vcf.gz.tbi"
+		output:
+			vcf = "archive/{run}/germline/vcf/cohort.annotated.vcf.gz",
+			tbi = "archive/{run}/germline/vcf/cohort.annotated.vcf.gz.tbi"
+		priority: 50
+		threads: 1
+		resources:
+			mem_mb      = 1000,
+			runtime_min = 120,
+			nfs_io      = 1
+		benchmark:
+			'results/{run}/benchmarks/archive/cohort.annotated.archive_vcf.bm'
+		log:
+			"results/{run}/logs/archive/cohort.annotated.archive_vcf.log"
+		shell: """
+			set -euo pipefail
+			mkdir -p $(dirname {output.vcf})
+			rsync -av {input.vcf} {output.vcf} &>>{log}
+			rsync -av {input.tbi} {output.tbi} &>>{log}
+		"""

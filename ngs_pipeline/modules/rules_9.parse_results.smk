@@ -8,32 +8,38 @@ _wes_panels = {
 _panel_names = list(_wes_panels.keys())
 
 
-rule r9_1_split_joint_vcf:
-	wildcard_constraints:
-		sample = "|".join(ngs.GRM_SAMPLES)
-	input:
-		# vcf = rules.r8_3_restore_genotypes.output.vcf
-		vcf = "results/{run}/germline/vcf/cohort.annotated.vcf.gz"
-	output:
-		vcf     = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz",
-		vcf_tbi = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz.tbi"
-	params:
-		bcftools = config['tools']['bcftools']
-	resources:
-		mem_mb      = 2000,
-		runtime_min = 60
-	benchmark:
-		'results/{run}/benchmarks/germline/vcf/{sample}.split_joint.bm'
-	log:
-		'results/{run}/logs/germline/{sample}.split_joint.log'
-	shell: """
-		set -euo pipefail
-		{params.bcftools} view \
-			-s {wildcards.sample} \
-			-Oz -o {output.vcf} \
-			{input.vcf} 2>{log}
-		{params.bcftools} index -t {output.vcf} 2>>{log}
-	"""
+if config.get('calling_mode', 'joint') == 'joint':
+
+	rule r9_1_split_joint_vcf:
+		wildcard_constraints:
+			sample = "|".join(ngs.GRM_SAMPLES)
+		input:
+			vcf = "results/{run}/germline/vcf/cohort.annotated.vcf.gz"
+		output:
+			vcf     = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz",
+			vcf_tbi = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz.tbi"
+		params:
+			bcftools = config['tools']['bcftools']
+		resources:
+			mem_mb      = 2000,
+			runtime_min = 60
+		benchmark:
+			'results/{run}/benchmarks/germline/vcf/{sample}.split_joint.bm'
+		log:
+			'results/{run}/logs/germline/{sample}.split_joint.log'
+		shell: """
+			set -euo pipefail
+			{params.bcftools} view \
+				-s {wildcards.sample} \
+				-Oz -o {output.vcf} \
+				{input.vcf} 2>{log}
+			{params.bcftools} index -t {output.vcf} 2>>{log}
+		"""
+
+
+_joint_per_sample_vcf = "results/{run}/germline/vcf/{sample}.joint.annotated.vcf.gz" \
+	if config.get('calling_mode', 'joint') == 'joint' \
+	else "results/{run}/germline/vcf/{sample}.annotated.vcf.gz"
 
 
 rule r9_2_filter_panel_genes:
@@ -42,9 +48,7 @@ rule r9_2_filter_panel_genes:
 		sample     = "|".join(ngs.GRM_SAMPLES),
 		panel_name = "|".join(_panel_names) if _panel_names else "NOPANEL"
 	input:
-		vcf = rules.r9_1_split_joint_vcf.output.vcf \
-			if config.get('calling_mode', 'joint') == 'joint' \
-			else rules.r8_4_vep_germline_individual.output.vcf
+		vcf = _joint_per_sample_vcf
 	output:
 		vcf = temp("results/{run}/germline/vcf/{sample}.{panel_name}.panel_filtered.vcf.gz")
 	params:
@@ -79,9 +83,7 @@ rule r9_3_filter_capture_genes:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
-		vcf = rules.r9_1_split_joint_vcf.output.vcf \
-			if config.get('calling_mode', 'joint') == 'joint' \
-			else rules.r8_4_vep_germline_individual.output.vcf,
+		vcf = _joint_per_sample_vcf,
 		bed = config['panel_capture']['target']
 	output:
 		vcf = temp("results/{run}/germline/vcf/{sample}.capture_filtered.vcf.gz")
@@ -117,9 +119,7 @@ def _parse_vcf_input(wc):
 	elif config['ngs_type'] == 'WES':
 		return rules.r9_2_filter_panel_genes.output.vcf
 	else:
-		return rules.r9_1_split_joint_vcf.output.vcf \
-			if config.get('calling_mode', 'joint') == 'joint' \
-			else rules.r8_4_vep_germline_individual.output.vcf
+		return _joint_per_sample_vcf.replace('{sample}', wc.sample).replace('{run}', wc.run)
 
 
 rule r9_4_parse_vcf:
@@ -164,14 +164,15 @@ rule r9_5_parse_vcf_wes_clinical:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
-		vcf = rules.r9_1_split_joint_vcf.output.vcf \
-			if config.get('calling_mode', 'joint') == 'joint' \
-			else rules.r8_4_vep_germline_individual.output.vcf
+		vcf = _joint_per_sample_vcf
 	output:
 		tsv = "results/{run}/germline/tsv/{sample}.wes_clinical.unfiltered.tsv"
 	params:
 		bcftools = config['tools']['bcftools']
 	priority: 40
+	resources:
+		mem_mb      = 2000,
+		runtime_min = 60
 	log:
 		'results/{run}/logs/parse_results/{sample}.wes_clinical.parse_vcf.log'
 	shell: """
@@ -220,6 +221,71 @@ rule r9_6_filter_tsv:
 	log:
 		'results/{run}/logs/parse_results/{sample}.{panel_name}.filter_tsv.log'
 	script: "scripts/postprocess.py"
+
+
+if config['ngs_type'] == 'panel':
+
+	rule r9_4b_parse_vcf_panel:
+		"""Parse capture-filtered VCF to TSV for panel ngs_type (no panel_name wildcard)."""
+		wildcard_constraints:
+			sample = "|".join(ngs.GRM_SAMPLES)
+		input:
+			vcf = rules.r9_3_filter_capture_genes.output.vcf
+		output:
+			tsv = temp("results/{run}/germline/tsv/{sample}.unfiltered.tsv")
+		params:
+			bcftools = config['tools']['bcftools']
+		priority: 40
+		resources:
+			mem_mb      = 2000,
+			runtime_min = 60
+		log:
+			'results/{run}/logs/parse_results/{sample}.parse_vcf.log'
+		shell: """
+			echo -e 'Chr\\tRef\\tAlt\\tRefGene\\tExon\\tHGVS_description\\tZyg\\t\
+rsID\\tGATK_FILTER\\tConsequence\\tConsequence_AA\\t\
+gnomAD_exome_NFE\\tgnomAD_exome_Comb\\tgnomAD_genome_NFE\\tgnomAD_genome_Comb\\t\
+CADD_PHRED\\tCADD_RAW\\tClinVar_CLNSIG\\tClinVar_CLNREVSTAT\\tSIFT\\tPolyPhen\\tExAC_pLI\\tPUBMED\\t\
+ClinVar_publications\\tClinVar_CLNDN\\tBIOTYPE\\tCANONICAL\\tPHENOTYPES\\t\
+am_class\\tam_pathogenicity\\tSNPred_score\\t\
+REVEL\\tMPC\\tSpliceAI_DS_AG\\tSpliceAI_DS_AL\\tSpliceAI_DS_DG\\tSpliceAI_DS_DL\\tNMD\\t\
+CoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}
+
+			{params.bcftools} view -m2 -M2 {input.vcf} | \
+			{params.bcftools} +split-vep -s primary -d -f \
+'%CHROM:%POS\\t%REF\\t%ALT\\t%SYMBOL\\t%EXON\\t%SYMBOL;%HGVSg;%HGVSc;%HGVSp\\t[%GT]\\t\
+%Existing_variation\\t%FILTER\\t%Consequence\\t%Amino_acids\\t\
+%gnomADe_NFE_AF\\t%gnomADe_AF\\t%gnomADg_NFE_AF\\t%gnomADg_AF\\t\
+%CADD_PHRED\\t%CADD_RAW\\t%CLIN_SIG\\t%ClinVar_CLNREVSTAT\\t%SIFT\\t%PolyPhen\\t%pLI_gene_value\\t%PUBMED\\t\
+%ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
+%am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t\
+%REVEL\\t%MPC\\t%SpliceAI_pred_DS_AG\\t%SpliceAI_pred_DS_AL\\t%SpliceAI_pred_DS_DG\\t%SpliceAI_pred_DS_DL\\t%NMD\\t\
+[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log}
+		"""
+
+
+	rule r9_6b_filter_tsv_panel:
+		"""Postprocess panel TSV. No panel_name wildcard — produces {sample}.tsv for r9_10."""
+		wildcard_constraints:
+			sample = "|".join(ngs.GRM_SAMPLES)
+		input:
+			tsv = rules.r9_4b_parse_vcf_panel.output.tsv,
+			bed = config['panel_capture']['target']
+		output:
+			tsv = "results/{run}/germline/tsv/{sample}.tsv"
+		priority: 40
+		params:
+			mart                = config['references']['vep_plugins_data']['custom']['mart'],
+			rank                = config['references']['vep_plugins_data']['custom']['rank'],
+			gnomad_filter       = False,
+			gnomad_af_threshold = config.get('filters', {}).get('gnomad', {}).get('af_threshold', 0.01),
+			gnomad_column       = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE'),
+			bed_file            = config['panel_capture']['target'],
+			ngs_type            = config['ngs_type'],
+			consequence_filter  = True
+		log:
+			'results/{run}/logs/parse_results/{sample}.filter_tsv.log'
+		script: "scripts/postprocess.py"
 
 
 rule r9_7_filter_tsv_wes_clinical:
@@ -312,9 +378,7 @@ rule r9_11_parse_vcf_raw:
 	wildcard_constraints:
 		sample = "|".join(ngs.GRM_SAMPLES)
 	input:
-		vcf = rules.r9_1_split_joint_vcf.output.vcf \
-			if config.get('calling_mode', 'joint') == 'joint' \
-			else rules.r8_4_vep_germline_individual.output.vcf
+		vcf = _joint_per_sample_vcf
 	output:
 		tsv = temp("results/{run}/germline/tsv/{sample}.raw.tsv")
 	params:
