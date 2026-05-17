@@ -7,6 +7,8 @@ _wes_panels = {
 
 _panel_names = list(_wes_panels.keys())
 
+_blacklist = config['references']['vep_plugins_data']['custom'].get('blacklist', None)
+
 
 if config.get('calling_mode', 'joint') == 'joint':
 
@@ -74,7 +76,9 @@ rule r9_2_filter_panel_genes:
 			-c SYMBOL \
 			-i "SYMBOL=@$$gene_file" \
 			-d -x \
-			-O z -o {output.vcf} 2>>{log} || exit 1
+			-O z -o {output.vcf} 2>>{log} || \
+		{params.bcftools} view -h {input.vcf} -O z -o {output.vcf} 2>>{log}
+		{params.bcftools} index -t {output.vcf} 2>>{log}
 	"""
 
 
@@ -109,7 +113,9 @@ rule r9_3_filter_capture_genes:
 			-c SYMBOL \
 			-i "SYMBOL=@$$gene_file" \
 			-d -x \
-			-O z -o {output.vcf} 2>>{log} || exit 1
+			-O z -o {output.vcf} 2>>{log} || \
+		{params.bcftools} view -h {input.vcf} -O z -o {output.vcf} 2>>{log}
+		{params.bcftools} index -t {output.vcf} 2>>{log}
 	"""
 
 
@@ -155,7 +161,7 @@ CoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}
 %ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
 %am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t\
 %REVEL\\t%MPC\\t%SpliceAI_pred_DS_AG\\t%SpliceAI_pred_DS_AL\\t%SpliceAI_pred_DS_DG\\t%SpliceAI_pred_DS_DL\\t%NMD\\t\
-[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log}
+[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log} || true
 	"""
 
 
@@ -194,7 +200,7 @@ CoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}
 %ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
 %am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t\
 %REVEL\\t%MPC\\t%SpliceAI_pred_DS_AG\\t%SpliceAI_pred_DS_AL\\t%SpliceAI_pred_DS_DG\\t%SpliceAI_pred_DS_DL\\t%NMD\\t\
-[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log}
+[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log} || true
 	"""
 
 
@@ -217,7 +223,8 @@ rule r9_6_filter_tsv:
 		gnomad_column       = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE'),
 		bed_file            = lambda wc: _wes_panels.get(wc.panel_name, config['panel_capture']['target']),
 		ngs_type            = config['ngs_type'],
-		consequence_filter  = True
+		consequence_filter  = True,
+		blacklist           = _blacklist
 	log:
 		'results/{run}/logs/parse_results/{sample}.{panel_name}.filter_tsv.log'
 	script: "scripts/postprocess.py"
@@ -260,7 +267,7 @@ CoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}
 %ClinVar\\t%ClinVar_CLNDN\\t%BIOTYPE\\t%CANONICAL\\t%PHENOTYPES\\t\
 %am_class\\t%am_pathogenicity\\t%SNPred_SNPred_score\\t\
 %REVEL\\t%MPC\\t%SpliceAI_pred_DS_AG\\t%SpliceAI_pred_DS_AL\\t%SpliceAI_pred_DS_DG\\t%SpliceAI_pred_DS_DL\\t%NMD\\t\
-[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log}
+[%DP]\\t[%GQ]\\t[%AD]\\n' >> {output.tsv} 2>>{log} || true
 		"""
 
 
@@ -282,7 +289,8 @@ CoverageDepth\\tGenotypeQual\\tAlleleDepth' > {output.tsv}
 			gnomad_column       = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE'),
 			bed_file            = config['panel_capture']['target'],
 			ngs_type            = config['ngs_type'],
-			consequence_filter  = True
+			consequence_filter  = True,
+			blacklist           = _blacklist
 		log:
 			'results/{run}/logs/parse_results/{sample}.filter_tsv.log'
 		script: "scripts/postprocess.py"
@@ -306,7 +314,8 @@ rule r9_7_filter_tsv_wes_clinical:
 		gnomad_column       = config.get('filters', {}).get('gnomad', {}).get('column', 'gnomAD_exome_NFE'),
 		bed_file            = config['panel_capture']['target'],
 		ngs_type            = config['ngs_type'],
-		consequence_filter  = True
+		consequence_filter  = True,
+		blacklist           = _blacklist
 	log:
 		'results/{run}/logs/parse_results/{sample}.wes_clinical.filter_tsv.log'
 	script: "scripts/postprocess.py"
@@ -393,5 +402,5 @@ rule r9_11_parse_vcf_raw:
 		echo -e 'Chr\tRef\tAlt\tRefGene\tExon\tHGVS_description\tZyg\trsID\tGATK_FILTER\tConsequence\tConsequence_AA\tgnomAD_exome_NFE\tgnomAD_exome_Comb\tgnomAD_genome_NFE\tgnomAD_genome_Comb\tCADD_PHRED\tCADD_RAW\tClinVar_CLNSIG\tClinVar_CLNREVSTAT\tSIFT\tPolyPhen\tExAC_pLI\tPUBMED\tClinVar_publications\tClinVar_CLNDN\tBIOTYPE\tCANONICAL\tPHENOTYPES\tam_class\tam_pathogenicity\tSNPred_score\tREVEL\tMPC\tSpliceAI_DS_AG\tSpliceAI_DS_AL\tSpliceAI_DS_DG\tSpliceAI_DS_DL\tNMD\tCoverageDepth\tGenotypeQual\tAlleleDepth' > {output.tsv}
 
 		{params.bcftools} view -m2 -M2 {input.vcf} | \
-		{params.bcftools} +split-vep -s primary -d -f '%CHROM:%POS\t%REF\t%ALT\t%SYMBOL\t%EXON\t%SYMBOL;%HGVSg;%HGVSc;%HGVSp\t[%GT]\t%Existing_variation\t%FILTER\t%Consequence\t%Amino_acids\t%gnomADe_NFE_AF\t%gnomADe_AF\t%gnomADg_NFE_AF\t%gnomADg_AF\t%CADD_PHRED\t%CADD_RAW\t%CLIN_SIG\t%ClinVar_CLNREVSTAT\t%SIFT\t%PolyPhen\t%pLI_gene_value\t%PUBMED\t%ClinVar\t%ClinVar_CLNDN\t%BIOTYPE\t%CANONICAL\t%PHENOTYPES\t%am_class\t%am_pathogenicity\t%SNPred_SNPred_score\t%REVEL\t%MPC\t%SpliceAI_pred_DS_AG\t%SpliceAI_pred_DS_AL\t%SpliceAI_pred_DS_DG\t%SpliceAI_pred_DS_DL\t%NMD\t[%DP]\t[%GQ]\t[%AD]\n' >> {output.tsv} 2>>{log}
+		{params.bcftools} +split-vep -s primary -d -f '%CHROM:%POS\t%REF\t%ALT\t%SYMBOL\t%EXON\t%SYMBOL;%HGVSg;%HGVSc;%HGVSp\t[%GT]\t%Existing_variation\t%FILTER\t%Consequence\t%Amino_acids\t%gnomADe_NFE_AF\t%gnomADe_AF\t%gnomADg_NFE_AF\t%gnomADg_AF\t%CADD_PHRED\t%CADD_RAW\t%CLIN_SIG\t%ClinVar_CLNREVSTAT\t%SIFT\t%PolyPhen\t%pLI_gene_value\t%PUBMED\t%ClinVar\t%ClinVar_CLNDN\t%BIOTYPE\t%CANONICAL\t%PHENOTYPES\t%am_class\t%am_pathogenicity\t%SNPred_SNPred_score\t%REVEL\t%MPC\t%SpliceAI_pred_DS_AG\t%SpliceAI_pred_DS_AL\t%SpliceAI_pred_DS_DG\t%SpliceAI_pred_DS_DL\t%NMD\t[%DP]\t[%GQ]\t[%AD]\n' >> {output.tsv} 2>>{log} || true
 	"""

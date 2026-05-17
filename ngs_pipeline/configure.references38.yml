@@ -45,4 +45,5 @@ references:
           mart: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/mart_export.tsv"
           SNPred: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/SNPred_scores.vcf.gz"
           rank: "/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/gse71613_ranking.tsv"
+          blacklist: "/ngs_pipeline/app/ngs_refs/GRCh38_boundle/hg38-blacklist.v2.bed.gz"
           # Orphanet: '/ngs_pipeline/app/ngs_refs/VEP_plugins/custom_anno/orphadata.bed.gz'

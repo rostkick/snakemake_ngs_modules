@@ -12,6 +12,7 @@ output_file = snakemake.output.tsv
 bed_file = snakemake.params.get('bed_file', None)
 ngs_type = snakemake.params.get('ngs_type', None)
 
+blacklist_file = snakemake.params.get('blacklist', None)
 gnomad_filter_enabled = snakemake.params.get('gnomad_filter', False)
 gnomad_af_threshold = snakemake.params.get('gnomad_af_threshold', 0.01)
 consequence_filter_enabled = snakemake.params.get('consequence_filter', False)
@@ -135,24 +136,61 @@ def remove_refcall_variants(df):
     return df
 
 
+def add_filter_flag(series, mask, flag):
+    """Append a flag to GATK_FILTER for rows matching mask.
+    Uses ';' as separator, avoids duplicates, normalises '.' and 'nan' to 'PASS'.
+    PASS is removed when any other flag is added — PASS means no flags at all.
+
+    Examples:
+        PASS                          + LargeIndel  -> LargeIndel
+        VQSRTranche...                + LargeIndel  -> VQSRTranche...;LargeIndel
+        VQSRTranche...;GQ             + LargeIndel  -> VQSRTranche...;GQ;LargeIndel
+        GQ                            + LargeIndel  -> GQ;LargeIndel
+    """
+    def _append(val):
+        val = str(val).strip()
+        if val in {'.', 'nan', ''}:
+            val = 'PASS'
+        flags = [f.strip() for f in val.split(';') if f.strip()]
+        if flag not in flags:
+            flags.append(flag)
+        # Remove PASS if there are other flags
+        if len(flags) > 1 and 'PASS' in flags:
+            flags.remove('PASS')
+        return ';'.join(flags)
+
+    series = series.copy()
+    series[mask] = series[mask].apply(_append)
+    return series
+
+
 def remove_extreme_low_quality_variants(df):
     n = len(df)
     extreme_mask = pd.Series([False] * len(df), index=df.index)
 
-    # Hard-remove variants that failed GATK VariantFiltration hard filters
-    # (QD2, FS60, MQ40, MQRankSum-12.5, ReadPosRankSum-8, FS200, ReadPosRankSum-20 etc.)
-    # Allowed values: PASS, . (bcftools PASS), GQ, DP, AlleleBalance, VQSRTranche*
-    # Everything else is a GATK hard filter tag — remove.
-    _allowed_filters = {'PASS', '.', 'nan', '', 'GQ', 'DP', 'AlleleBalance'}
+    # Hard-remove variants that failed GATK hard filters (QD2, FS60, MQ40 etc.)
+    # VQSR tranches (VQSRTranche*) are soft-flagged and retained for manual review.
+    # Soft flags (GQ, DP, AlleleBalance, VQSRTranche*, LargeIndel) are never hard-removed.
+    _soft_flags = {'PASS', '.', 'nan', '', 'GQ', 'DP', 'AlleleBalance', 'LargeIndel'}
     if 'GATK_FILTER' in df.columns:
         def _is_hard_filtered(val):
             val = str(val).strip()
-            if val in _allowed_filters:
-                return False
-            return True
+            # Check each semicolon-separated flag
+            flags = [f.strip() for f in val.split(';') if f.strip()]
+            for f in flags:
+                if f in _soft_flags:
+                    continue
+                if f.startswith('VQSRTranche'):
+                    continue
+                return True
+            return False
         hard_filtered = df['GATK_FILTER'].apply(_is_hard_filtered)
         print(f"[FILTER]   GATK hard filter failed: {hard_filtered.sum()} rows")
         extreme_mask |= hard_filtered
+
+        # Log VQSR-flagged variants that are retained
+        vqsr_flagged = df['GATK_FILTER'].astype(str).str.contains('VQSRTranche', na=False)
+        print(f"[FILTER]   VQSR-flagged (retained): {vqsr_flagged.sum()} rows")
 
     if 'CoverageDepth' in df.columns:
         df['CoverageDepth'] = pd.to_numeric(df['CoverageDepth'], errors='coerce')
@@ -161,15 +199,13 @@ def remove_extreme_low_quality_variants(df):
         extreme_mask |= m
 
     # Hard-remove variants with GQ < GQ_HARD_THRESHOLD.
-    # HaplotypeCaller GQ ranges 0–99; calls below 20 are unreliable regardless of depth.
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
         m = df['GenotypeQual'] < GQ_HARD_THRESHOLD
         print(f"[FILTER]   GQ < {GQ_HARD_THRESHOLD}: {m.sum()} rows")
         extreme_mask |= m
 
-    # Hard-remove variants where ref AD is missing (.) — unreliable multiallelic
-    # calls where the genotyper could not compute ref allele depth.
+    # Hard-remove variants where ref AD is missing (.) — unreliable multiallelic calls.
     if 'AlleleDepth' in df.columns:
         try:
             split_ad = df['AlleleDepth'].astype(str).str.split(',', expand=True)
@@ -179,8 +215,7 @@ def remove_extreme_low_quality_variants(df):
         except Exception as e:
             print(f"[FILTER]   AD ref missing check failed: {e}")
 
-    # Hard-remove het calls with VAF < 0.1: fewer than 10% alt reads for a het
-    # is almost certainly a miscall or alignment artifact regardless of DP.
+    # Hard-remove het calls with VAF < 0.1.
     if 'AlleleDepth' in df.columns and 'Zyg' in df.columns:
         try:
             split_ad = df['AlleleDepth'].astype(str).str.split(',', expand=True)
@@ -205,21 +240,23 @@ def apply_quality_flags(df):
         df['GATK_FILTER'] = 'PASS'
 
     # Normalize GATK_FILTER: VCF PASS is represented as '.' in bcftools output
-    df['GATK_FILTER'] = df['GATK_FILTER'].astype(str).replace('.', 'PASS')
+    df['GATK_FILTER'] = df['GATK_FILTER'].astype(str).apply(
+        lambda x: 'PASS' if x.strip() in {'.', 'nan', ''} else x.strip()
+    )
 
     if 'CoverageDepth' in df.columns:
         df['CoverageDepth'] = pd.to_numeric(df['CoverageDepth'], errors='coerce')
         m = (df['CoverageDepth'] > EXTREME_DP_THRESHOLD) & (df['CoverageDepth'] < 10)
-        df.loc[m, 'GATK_FILTER'] = 'DP'
+        df['GATK_FILTER'] = add_filter_flag(df['GATK_FILTER'], m, 'DP')
         print(f"[FILTER]   Flagged DP (5-10): {m.sum()} rows")
 
-    # GQ soft flag: GQ_HARD_THRESHOLD to GQ_SOFT_THRESHOLD-1 are retained but flagged.
-    # HaplotypeCaller GQ 20-29 are borderline calls worth manual review.
+    # GQ soft flag: GQ 10-19 are borderline calls worth manual review.
+    # GQ < 10 is hard-removed above; GQ >= 20 passes without flag.
     if 'GenotypeQual' in df.columns:
         df['GenotypeQual'] = pd.to_numeric(df['GenotypeQual'], errors='coerce')
-        m = (df['GenotypeQual'] >= GQ_HARD_THRESHOLD) & (df['GenotypeQual'] < GQ_SOFT_THRESHOLD) & (df['GATK_FILTER'] == 'PASS')
-        df.loc[m, 'GATK_FILTER'] = 'GQ'
-        print(f"[FILTER]   Flagged GQ ({GQ_HARD_THRESHOLD}-{GQ_SOFT_THRESHOLD-1}): {m.sum()} rows")
+        m = (df['GenotypeQual'] >= 10) & (df['GenotypeQual'] < GQ_HARD_THRESHOLD)
+        df['GATK_FILTER'] = add_filter_flag(df['GATK_FILTER'], m, 'GQ')
+        print(f"[FILTER]   Flagged GQ (10-{GQ_HARD_THRESHOLD-1}): {m.sum()} rows")
 
     if 'AlleleDepth' in df.columns:
         df[['AD1', 'AD2']] = df['AlleleDepth'].astype(str).str.split(',', expand=True).iloc[:, :2]
@@ -233,8 +270,8 @@ def apply_quality_flags(df):
         df.loc[(df['AlleleBalance'] >= 0.25) & (df['AlleleBalance'] <= 0.75), 'GT_inferred'] = 'het'
         df.loc[df['AlleleBalance'] >= 0.90, 'GT_inferred'] = 'hom_alt'
 
-        m = (df['GT_inferred'] == 'unknown') & (df['GATK_FILTER'] == 'PASS')
-        df.loc[m, 'GATK_FILTER'] = 'AlleleBalance'
+        m = df['GT_inferred'] == 'unknown'
+        df['GATK_FILTER'] = add_filter_flag(df['GATK_FILTER'], m, 'AlleleBalance')
         print(f"[FILTER]   Flagged AlleleBalance: {m.sum()} rows")
 
     return df
@@ -376,16 +413,18 @@ def filter_by_panel_genes(df, bed_file, ngs_type):
 
 
 def filter_large_indels(df, max_indel_len=9):
-    """Remove indels with length >= 10 bp (abs(len(REF) - len(ALT)) >= 10)."""
+    """Flag indels with length >= 10 bp instead of removing them.
+    Appends 'LargeIndel' to GATK_FILTER and retains the variant.
+    """
     if 'Ref' not in df.columns or 'Alt' not in df.columns:
         print("[FILTER] filter_large_indels: Ref/Alt columns not found, skipping")
         return df
-    n = len(df)
     indel_len = (df['Ref'].astype(str).str.len() - df['Alt'].astype(str).str.len()).abs()
     mask = indel_len >= 10
-    print(f"[FILTER]   Indel length >= 10: {mask.sum()} rows")
-    df = df[~mask]
-    log_step("filter_large_indels", n, len(df))
+    print(f"[FILTER]   Indel length >= 10 (flagged, retained): {mask.sum()} rows")
+    if 'GATK_FILTER' not in df.columns:
+        df['GATK_FILTER'] = 'PASS'
+    df['GATK_FILTER'] = add_filter_flag(df['GATK_FILTER'], mask, 'LargeIndel')
     return df
 
 
@@ -420,6 +459,68 @@ def compute_spliceai_max(df):
     return df
 
 
+def filter_blacklist(df, blacklist_file):
+    """Flag variants overlapping ENCODE blacklist regions.
+    Appends 'Blacklist' to GATK_FILTER and retains the variant.
+    Expects Chr column in format 'chr1:12345'.
+    Blacklist BED can be gzipped (.bed.gz) or plain (.bed).
+    """
+    if not blacklist_file or not os.path.exists(blacklist_file):
+        print(f"[FILTER] blacklist: file not found ({blacklist_file}), skipping")
+        return df
+
+    if 'Chr' not in df.columns:
+        print("[FILTER] blacklist: Chr column not found, skipping")
+        return df
+
+    import gzip
+
+    # Load blacklist into memory as list of (chrom, start, end)
+    regions = []
+    opener = gzip.open if blacklist_file.endswith('.gz') else open
+    with opener(blacklist_file, 'rt') as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split('\t')
+            if len(parts) < 3:
+                continue
+            try:
+                regions.append((parts[0], int(parts[1]), int(parts[2])))
+            except ValueError:
+                continue
+
+    print(f"[FILTER] blacklist: loaded {len(regions)} regions from {blacklist_file}")
+
+    # Build per-chrom index for fast lookup
+    from collections import defaultdict
+    chrom_index = defaultdict(list)
+    for chrom, start, end in regions:
+        chrom_index[chrom].append((start, end))
+
+    def _in_blacklist(chrom_pos):
+        parts = str(chrom_pos).split(':')
+        if len(parts) < 2:
+            return False
+        chrom = parts[0]
+        try:
+            pos = int(parts[1])
+        except ValueError:
+            return False
+        for start, end in chrom_index.get(chrom, []):
+            if start <= pos <= end:
+                return True
+        return False
+
+    mask = df['Chr'].apply(_in_blacklist)
+    print(f"[FILTER] blacklist: {mask.sum()} variants flagged")
+    if mask.sum() > 0:
+        df['GATK_FILTER'] = add_filter_flag(df['GATK_FILTER'], mask, 'Blacklist')
+    return df
+
+
+
 def main():
     df = pd.read_csv(input_file, sep='\t', encoding='utf-8', low_memory=False)
     print(f"[FILTER] ===== postprocess start =====")
@@ -445,8 +546,11 @@ def main():
     # 2. Hard-remove extreme low quality
     df = remove_extreme_low_quality_variants(df)
 
-    # 3. Remove large indels (>= 10 bp)
+    # 3. Flag large indels (>= 10 bp) — retained with LargeIndel flag
     df = filter_large_indels(df)
+
+    # 3b. Flag variants in ENCODE blacklist regions
+    df = filter_blacklist(df, blacklist_file)
 
     # 4. Optional: keep only pathogenic consequence classes
     if consequence_filter_enabled:
@@ -488,6 +592,11 @@ def main():
                 df.drop('hgnc_symbol', axis=1, inplace=True)
             if len(df) != n_pre_rank:
                 print(f"[FILTER] WARNING: rank merge changed row count {n_pre_rank} -> {len(df)}")
+            # Replace '.' with NaN so Excel treats the column as numeric (sortable)
+            if 'rank_gse71613' in df.columns:
+                df['rank_gse71613'] = pd.to_numeric(
+                    df['rank_gse71613'].replace('.', np.nan), errors='coerce'
+                )
         else:
             df['rank_gse71613'] = np.nan
     else:
@@ -551,7 +660,6 @@ def main():
     df.to_csv(output_file, index=False, sep='\t', na_rep='.')
 
 
-if __name__ == "__main__":
-    with open(log_file, "w") as f:
-        sys.stderr = sys.stdout = f
-        main()
+with open(log_file, "w") as f:
+    sys.stderr = sys.stdout = f
+    main()
