@@ -9,7 +9,6 @@ rule r7_1_mutect2_tmr_only:
 		capture = rules.r2_1_bed_to_intervals.output.intervals if config['panel_capture']['target'][-4:] == 'bed' else config['panel_capture']['target']
 	output: 
 		vcf = temp('results/{run}/somatic/{patient}/raw_tonly.vcf.gz'),
-		bam = temp('results/{run}/somatic/{patient}/raw_tonly.bam')
 	log: 
 		'results/{run}/logs/somatic/{patient}/Mutect2.log'
 	priority: 35
@@ -18,16 +17,16 @@ rule r7_1_mutect2_tmr_only:
 		ref = config['references']['genome_fa'],
 		grm_res = config['references']['af_only_gnomad'],
 		pon = config['references']['pon'],
-		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.6)}m"
+		java_opts = lambda wc, resources: f"-Xmx{int(resources.mem_mb * 0.75)}m -Xms2g -XX:+UseG1GC"
 	resources:
-		mem_mb={'panel': 8000, 'WES': 16000, 'WGS': 20000}.get(config['ngs_type'], 16000),
+		mem_mb={'panel': 16000, 'WES': 24000, 'WGS': 28000}.get(config['ngs_type'], 16000),
 		runtime_min={'panel': 1440, 'WES': 5760, 'WGS': 11520}.get(config['ngs_type'], 5760)
 	shell: """
 			{params.gatk} --java-options "{params.java_opts}" Mutect2 \
 				-R {params.ref} \
 				-I {input.bam} \
 				-O {output.vcf} \
-				-bamout {output.bam} \
+					-L {input.capture} \
 				--germline-resource {params.grm_res} \
 				--af-of-alleles-not-in-resource 0.0001 \
 				--panel-of-normals {params.pon} 2>{log}"""

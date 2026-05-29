@@ -39,9 +39,8 @@ COPY deps/environment.yml .
 COPY deps/tools ./tools
 
 # go installation
-RUN cd /usr/local && \
-		wget https://golang.org/dl/go1.16.5.linux-amd64.tar.gz && \
-		rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
+RUN apt-get update && apt-get install -y golang-go && \
+    rm -rf /var/lib/apt/lists/*
 
 # libseccomp installation - needed to compile singularity
 RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.1/libseccomp-2.5.1.tar.gz && \
